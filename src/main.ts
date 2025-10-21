@@ -8,7 +8,20 @@ async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
-  app.enableCors();
+  // Enable CORS with restrictions
+  const allowedOrigins = configService.get<string>('cors.allowedOrigins', 'http://localhost:3000');
+  app.enableCors({
+    origin: allowedOrigins.split(',').map(origin => origin.trim()),
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'x-api-key',
+      'x-timestamp',
+      'x-signature',
+    ],
+  });
 
   app.useGlobalPipes(
     new ValidationPipe({

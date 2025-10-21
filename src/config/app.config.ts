@@ -11,5 +11,11 @@ export default () => ({
   security: {
     hmacEnabled: process.env.HMAC_ENABLED === 'true',
     hmacTimeWindow: parseInt(process.env.HMAC_TIME_WINDOW || '300', 10),
+    rateLimitMaxRequests: parseInt(process.env.RATE_LIMIT_MAX_REQUESTS || '100', 10),
+    rateLimitWindowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000', 10),
+    rateLimitCleanupInterval: parseInt(process.env.RATE_LIMIT_CLEANUP_INTERVAL || '300000', 10),
+  },
+  cors: {
+    allowedOrigins: process.env.CORS_ALLOWED_ORIGINS || 'http://localhost:3000,http://localhost:3001',
   },
 });
