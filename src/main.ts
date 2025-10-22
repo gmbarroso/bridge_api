@@ -3,15 +3,22 @@ import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
+import { INestApplication } from '@nestjs/common';
+
+let cachedApp: INestApplication;
 
 async function createApp() {
+  if (cachedApp) {
+    return cachedApp;
+  }
+
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
   // Enable CORS with restrictions
-  const allowedOrigins = configService.get<string>('cors.allowedOrigins', 'http://localhost:3000');
+  const allowedOrigins = configService.get<string>('cors.allowedOrigins', '*');
   app.enableCors({
-    origin: allowedOrigins.split(',').map(origin => origin.trim()),
+    origin: allowedOrigins === '*' ? true : allowedOrigins.split(',').map(origin => origin.trim()),
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
@@ -41,12 +48,16 @@ async function createApp() {
       in: 'header',
       description: 'Organization API Key for bot authentication',
     })
+    .addServer('https://bridge-api-synthix.vercel.app', 'Production')
     .addServer('http://localhost:3000', 'Development')
     .build();
 
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
+  await app.init();
+  cachedApp = app;
+  
   return app;
 }
 
@@ -61,13 +72,14 @@ async function bootstrap() {
   console.log(`📚 Swagger docs available at: http://localhost:${port}/api`);
 }
 
+// Para desenvolvimento local
 if (require.main === module) {
   bootstrap();
 }
 
+// Para Vercel (serverless)
 export default async (req: any, res: any) => {
   const app = await createApp();
-  await app.init();
-  const server = app.getHttpAdapter().getInstance();
-  return server(req, res);
+  const expressApp = app.getHttpAdapter().getInstance();
+  return expressApp(req, res);
 };
