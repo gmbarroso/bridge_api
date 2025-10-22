@@ -7,6 +7,9 @@ export default () => ({
     username: process.env.DB_USERNAME || 'postgres',
     password: process.env.DB_PASSWORD || 'postgres',
     name: process.env.DB_NAME || 'bridge_api',
+    ssl: process.env.NODE_ENV === 'production' || process.env.DB_HOST?.includes('supabase') 
+      ? { rejectUnauthorized: false } 
+      : false,
   },
   security: {
     hmacEnabled: process.env.HMAC_ENABLED === 'true',
