@@ -18,4 +18,7 @@ export default new DataSource({
   migrations: ['src/database/migrations/*.ts'],
   synchronize: false,
   logging: configService.get('NODE_ENV') === 'development',
+  ssl: configService.get('NODE_ENV') === 'production' || configService.get('DB_HOST')?.includes('supabase') 
+    ? { rejectUnauthorized: false } 
+    : false,
 });

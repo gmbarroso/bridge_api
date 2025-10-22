@@ -27,6 +27,7 @@ import * as entities from './database/entities';
         entities: Object.values(entities),
         synchronize: false,
         logging: configService.get('environment') === 'development',
+        ssl: configService.get('database.ssl'),
       }),
       inject: [ConfigService],
     }),
