@@ -4,7 +4,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 
-async function bootstrap() {
+async function createApp() {
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
 
@@ -47,6 +47,13 @@ async function bootstrap() {
   const document = SwaggerModule.createDocument(app, config);
   SwaggerModule.setup('api', app, document);
 
+  return app;
+}
+
+async function bootstrap() {
+  const app = await createApp();
+  const configService = app.get(ConfigService);
+  
   const port = configService.get<number>('port', 3000);
   await app.listen(port);
 
@@ -54,4 +61,13 @@ async function bootstrap() {
   console.log(`📚 Swagger docs available at: http://localhost:${port}/api`);
 }
 
-bootstrap();
+if (require.main === module) {
+  bootstrap();
+}
+
+export default async (req: any, res: any) => {
+  const app = await createApp();
+  await app.init();
+  const server = app.getHttpAdapter().getInstance();
+  return server(req, res);
+};
