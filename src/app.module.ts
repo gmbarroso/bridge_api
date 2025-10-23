@@ -6,6 +6,7 @@ import { AppService } from './app.service';
 import appConfig from './config/app.config';
 import { AuthModule } from './modules/auth/auth.module';
 import { IngestModule } from './modules/ingest/ingest.module';
+import { BffModule } from './modules/bff/bff.module';
 import * as entities from './database/entities';
 
 @Module({
@@ -32,7 +33,8 @@ import * as entities from './database/entities';
       inject: [ConfigService],
     }),
     AuthModule,
-    IngestModule,
+  IngestModule,
+  BffModule,
   ],
   controllers: [AppController],
   providers: [AppService],

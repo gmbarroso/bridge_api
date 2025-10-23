@@ -42,6 +42,15 @@ async function createApp() {
     .setTitle('Bridge API')
     .setDescription('Bridge API - Sistema de Ingestão de Leads')
     .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'JWT de acesso para endpoints do BFF/Admin',
+      },
+      'BearerAuth',
+    )
     .addApiKey({
       type: 'apiKey',
       name: 'x-api-key',

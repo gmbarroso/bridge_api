@@ -45,7 +45,13 @@ export class ClientOnboardingController {
           leadAttribute: "https://api.seudominio.com/ingest/lead-attribute",
           message: "https://api.seudominio.com/ingest/message"
         },
-        testCommands: ["curl -X POST ..."]
+        testCommands: ["curl -X POST ..."],
+        adminInvite: {
+          email: "owner@cliente.com",
+          role: "admin",
+          inviteUrl: "https://app.seudominio.com/accept-invite?token=...",
+          expiresAt: "2025-11-01T12:00:00.000Z"
+        }
       }
     }
   })

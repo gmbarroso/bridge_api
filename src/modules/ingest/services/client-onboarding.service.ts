@@ -1,7 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { createHash, randomBytes } from 'crypto';
 import { ApiKeyManagementService } from './api-key-management.service';
+import { Organization } from '../../../database/entities/organization.entity';
+import { VerificationToken } from '../../../database/entities/verification-token.entity';
 
 export interface ClientOnboardingData {
   clientName: string;
@@ -23,20 +26,33 @@ export interface OnboardingResult {
     message: string;
   };
   testCommands: string[];
+  adminInvite?: {
+    email: string;
+    role: 'admin';
+    inviteUrl: string;
+    expiresAt: string;
+  };
 }
 
 @Injectable()
 export class ClientOnboardingService {
   constructor(
     private readonly apiKeyService: ApiKeyManagementService,
+    @InjectRepository(Organization)
+    private readonly orgRepo: Repository<Organization>,
+    @InjectRepository(VerificationToken)
+    private readonly tokenRepo: Repository<VerificationToken>,
   ) {}
 
   /**
    * Onboarding completo de novo cliente
    */
   async onboardNewClient(clientData: ClientOnboardingData): Promise<OnboardingResult> {
-    // 1. Determinar próximo organization_id
-    const organizationId = await this.getNextOrganizationId();
+    // 1. Criar Organization real (respeita FKs)
+    const org = await this.orgRepo.save({
+      name: clientData.clientName,
+    });
+    const organizationId = org.id;
 
     // 2. Gerar API Key para o cliente
     const apiKeyData = await this.apiKeyService.generateApiKey(
@@ -66,6 +82,18 @@ export class ClientOnboardingService {
       clientData
     );
 
+    // 6. (Opcional) Gerar convite de Owner/Admin para o responsável
+    let adminInvite: OnboardingResult['adminInvite'] | undefined = undefined;
+    if (clientData.email) {
+      const invite = await this.createAdminInvite(organizationId, clientData.email);
+      adminInvite = {
+        email: clientData.email,
+        role: 'admin',
+        inviteUrl: invite.inviteUrl,
+        expiresAt: invite.expiresAt.toISOString(),
+      };
+    }
+
     return {
       organizationId,
       apiKey: apiKeyData.apiKey,
@@ -73,6 +101,7 @@ export class ClientOnboardingService {
       setupInstructions,
       webhookUrls,
       testCommands,
+      adminInvite,
     };
   }
 
@@ -363,5 +392,30 @@ const bridgeAPI = {
     // Por simplicidade, vamos usar timestamp como ID
     // Em produção, você pode ter uma tabela organizations
     return Date.now() % 1000000; // ID baseado em timestamp
+  }
+
+  private generateToken(): { raw: string; hash: string } {
+    const raw = randomBytes(32).toString('base64url');
+    const hash = createHash('sha256').update(raw).digest('hex');
+    return { raw, hash };
+  }
+
+  private async createAdminInvite(organizationId: number, email: string) {
+    const { raw, hash } = this.generateToken();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 dias
+    await this.tokenRepo.save({
+      user_id: null,
+      token_hash: hash,
+      type: 'invite',
+      organization_id: organizationId,
+      invite_email: email,
+      invite_role: 'admin',
+      invited_by_user_id: null,
+      expires_at: expiresAt,
+      used_at: null,
+    });
+    const baseUrl = process.env.FRONT_BASE_URL || process.env.API_BASE_URL || 'https://app.seudominio.com';
+    const inviteUrl = `${baseUrl}/accept-invite?token=${raw}`;
+    return { inviteUrl, expiresAt };
   }
 }
