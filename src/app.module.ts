@@ -8,6 +8,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { IngestModule } from './modules/ingest/ingest.module';
 import { BffModule } from './modules/bff/bff.module';
 import * as entities from './database/entities';
+import { MetricsService } from './common/observability/metrics.service';
+import { MetricsController } from './common/observability/metrics.controller';
 
 @Module({
   imports: [
@@ -36,7 +38,7 @@ import * as entities from './database/entities';
   IngestModule,
   BffModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  controllers: [AppController, MetricsController],
+  providers: [AppService, MetricsService],
 })
 export class AppModule {}

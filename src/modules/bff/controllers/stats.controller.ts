@@ -1,7 +1,7 @@
 import { Controller, Get, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt.guard';
 import { OrganizationId } from '../../../common/decorators/organization.decorator';
-import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiTags, ApiOkResponse } from '@nestjs/swagger';
 import { StatsService } from '../services/stats.service';
 import { TrendQueryDto } from '../dto/stats.dto';
 import type { Request, Response } from 'express';
@@ -16,6 +16,7 @@ export class StatsController {
 
   @Get('summary')
   @ApiOperation({ summary: 'Resumo rápido de leads' })
+  @ApiOkResponse({ schema: { example: { totalLeads: 123, leadsByStage: { new: 80, qualified: 25, scheduled: 10, converted: 5, lost: 3 }, leadsToday: 12, activeLeadsLast24h: 34 } } })
   async summary(
     @OrganizationId() orgId: number,
     @Req() req: Request,
@@ -36,6 +37,7 @@ export class StatsController {
 
   @Get('leads-trend')
   @ApiOperation({ summary: 'Trend de leads por dia' })
+  @ApiOkResponse({ schema: { example: { points: [ { date: '2025-10-10', count: 3 }, { date: '2025-10-11', count: 8 } ] } } })
   async leadsTrend(
     @OrganizationId() orgId: number,
     @Query() query: TrendQueryDto,
