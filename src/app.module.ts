@@ -10,6 +10,7 @@ import { BffModule } from './modules/bff/bff.module';
 import * as entities from './database/entities';
 import { MetricsService } from './common/observability/metrics.service';
 import { MetricsController } from './common/observability/metrics.controller';
+import { CacheService } from './common/cache/cache.service';
 
 @Module({
   imports: [
@@ -39,6 +40,6 @@ import { MetricsController } from './common/observability/metrics.controller';
   BffModule,
   ],
   controllers: [AppController, MetricsController],
-  providers: [AppService, MetricsService],
+  providers: [AppService, MetricsService, CacheService],
 })
 export class AppModule {}

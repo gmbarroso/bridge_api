@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { CursorDto, LeadDetail, LeadTimelineResponse, ListLeadsDto, ListLeadsResponse } from '../dto/leads.dto';
+import { CacheService } from '../../../common/cache/cache.service';
 
 function normalizePhone(input?: string | null): string | undefined {
   if (!input) return undefined;
@@ -14,7 +15,7 @@ function normalizeText(input?: string | null): string | undefined {
 
 @Injectable()
 export class LeadsService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(private readonly dataSource: DataSource, private readonly cache: CacheService) {}
 
   async list(orgId: number, dto: ListLeadsDto): Promise<ListLeadsResponse> {
     const limit = dto.limit ?? 20;
@@ -81,7 +82,15 @@ export class LeadsService {
       LIMIT ${limit + 1}
     `;
 
-    const rows: any[] = await this.dataSource.query(sql, params);
+    // Cache key includes org and request fingerprint (excluding volatile fields)
+    const cacheKey = `bff:leads:list:${orgId}:${this.cache.hash({ ...dto, limit })}`;
+    const cached = await this.cache.getJSON<any[]>(cacheKey);
+    let rows: any[] = cached || [];
+    if (!cached) {
+      rows = await this.dataSource.query(sql, params);
+      // Short TTL for list results
+      await this.cache.setJSON(cacheKey, rows, 15);
+    }
     const hasMore = rows.length > limit;
     const page = rows.slice(0, limit);
 

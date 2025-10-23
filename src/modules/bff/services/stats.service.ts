@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { TrendQueryDto, SummaryStats, TrendResponse } from '../dto/stats.dto';
+import { CacheService } from '../../../common/cache/cache.service';
 
 function toDateOnlyUTC(d: Date): string {
   const year = d.getUTCFullYear();
@@ -11,9 +12,12 @@ function toDateOnlyUTC(d: Date): string {
 
 @Injectable()
 export class StatsService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(private readonly dataSource: DataSource, private readonly cache: CacheService) {}
 
   async summary(orgId: number): Promise<SummaryStats> {
+    const cacheKey = `bff:stats:summary:${orgId}`;
+    const cached = await this.cache.getJSON<SummaryStats>(cacheKey);
+    if (cached) return cached;
     const sql = `
       WITH by_stage AS (
         SELECT stage, COUNT(1) AS c
@@ -39,18 +43,23 @@ export class StatsService {
     `;
     const rows: any[] = await this.dataSource.query(sql, [orgId]);
     const r = rows[0];
-    return {
+    const result: SummaryStats = {
       totalLeads: Number(r.total_leads || 0),
       leadsByStage: r.leads_by_stage || {},
       leadsToday: Number(r.leads_today || 0),
       activeLeadsLast24h: Number(r.active_leads_last_24h || 0),
     };
+    await this.cache.setJSON(cacheKey, result, 30);
+    return result;
   }
 
   async leadsTrend(orgId: number, dto: TrendQueryDto): Promise<TrendResponse> {
     // Defaults: last 14 days inclusive
     const end = dto.dateTo ? new Date(dto.dateTo) : new Date();
     const start = dto.dateFrom ? new Date(dto.dateFrom) : new Date(end.getTime() - 13 * 24 * 3600 * 1000);
+    const cacheKey = `bff:stats:trend:${orgId}:${toDateOnlyUTC(start)}:${toDateOnlyUTC(end)}`;
+    const cached = await this.cache.getJSON<TrendResponse>(cacheKey);
+    if (cached) return cached;
 
     const sql = `
       WITH series AS (
@@ -69,8 +78,10 @@ export class StatsService {
     `;
 
     const rows: any[] = await this.dataSource.query(sql, [orgId, toDateOnlyUTC(start), toDateOnlyUTC(end)]);
-    return {
+    const result: TrendResponse = {
       points: rows.map((r) => ({ date: r.day, count: Number(r.count || 0) })),
     };
+    await this.cache.setJSON(cacheKey, result, 60);
+    return result;
   }
 }
