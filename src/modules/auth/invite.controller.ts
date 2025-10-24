@@ -1,7 +1,8 @@
 import { Body, Controller, Post } from '@nestjs/common';
-import { ApiBody, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiExtraModels, ApiOperation, ApiResponse, ApiTags, getSchemaPath } from '@nestjs/swagger';
 import { IsString, MinLength } from 'class-validator';
 import { InviteService } from './invite.service';
+import { ErrorResponse } from '../../common/swagger/errors';
 
 class AcceptInviteDto {
   @IsString()
@@ -17,6 +18,7 @@ class AcceptInviteDto {
 }
 
 @ApiTags('Auth')
+@ApiExtraModels(ErrorResponse)
 @Controller('auth')
 export class InviteController {
   constructor(private readonly inviteService: InviteService) {}
@@ -34,6 +36,9 @@ export class InviteController {
       organization_id: 1
     }
   } } })
+  @ApiResponse({ status: 401, description: 'Unauthorized', schema: { $ref: getSchemaPath(ErrorResponse) } })
+  @ApiResponse({ status: 403, description: 'Forbidden', schema: { $ref: getSchemaPath(ErrorResponse) } })
+  @ApiResponse({ status: 404, description: 'Convite inválido/expirado', schema: { $ref: getSchemaPath(ErrorResponse) } })
   async acceptInvite(@Body() dto: AcceptInviteDto) {
     return this.inviteService.acceptInvite(dto);
   }

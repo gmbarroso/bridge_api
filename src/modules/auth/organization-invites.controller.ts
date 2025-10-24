@@ -1,11 +1,12 @@
 import { Body, Controller, Param, Post, UseGuards } from '@nestjs/common';
-import { ApiHeader, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
+import { ApiHeader, ApiOperation, ApiResponse, ApiTags, ApiExtraModels, getSchemaPath } from '@nestjs/swagger';
 import { IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { createHash, randomBytes } from 'crypto';
 import { VerificationToken } from '../../database/entities/verification-token.entity';
 import { DevAdminGuard } from './guards/dev-admin.guard';
+import { ErrorResponse } from '../../common/swagger/errors';
 
 class CreateInviteDto {
   @IsEmail()
@@ -21,6 +22,7 @@ class CreateInviteDto {
 }
 
 @ApiTags('Admin')
+@ApiExtraModels(ErrorResponse)
 @Controller('admin/organizations/:organizationId/invites')
 export class OrganizationInvitesController {
   constructor(
@@ -46,6 +48,8 @@ export class OrganizationInvitesController {
     inviteUrl: 'https://app.seudominio.com/accept-invite?token=...',
     expiresAt: '2025-11-01T12:00:00.000Z'
   } } })
+  @ApiResponse({ status: 401, description: 'Unauthorized', schema: { $ref: getSchemaPath(ErrorResponse) } })
+  @ApiResponse({ status: 403, description: 'Forbidden', schema: { $ref: getSchemaPath(ErrorResponse) } })
   async createInvite(
     @Param('organizationId') organizationIdParam: string,
     @Body() dto: CreateInviteDto,

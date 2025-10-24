@@ -1,7 +1,9 @@
 import { Controller, Get, Param, Query, UseGuards, Req, Res } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt.guard';
 import { OrganizationId } from '../../../common/decorators/organization.decorator';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags, ApiOkResponse, ApiQuery, ApiHeader, ApiResponse, getSchemaPath } from '@nestjs/swagger';
+import { ErrorResponse } from '../../../common/swagger/errors';
+import { BffTimelineResponse } from '../../../common/swagger/success';
 import { LeadsService } from '../services/leads.service';
 import { CursorDto } from '../dto/leads.dto';
 import type { Request, Response } from 'express';
@@ -17,6 +19,12 @@ export class ConversationsController {
   @Get(':id/messages')
   @ApiOperation({ summary: 'Lista mensagens da conversa por public_id' })
   @ApiParam({ name: 'id', description: 'Conversation public_id (UUID)', example: 'c1b0b0d1-0000-4000-8000-000000000000' })
+  @ApiQuery({ name: 'cursor', required: false, description: 'Cursor opaco para paginação' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Itens por página (1-100, padrão 20)', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } })
+  @ApiHeader({ name: 'If-None-Match', required: false, description: 'Conditional GET usando ETag' })
+  @ApiOkResponse({ schema: { $ref: getSchemaPath(BffTimelineResponse) } })
+  @ApiResponse({ status: 304, description: 'Not Modified (ETag corresponde ao conteúdo atual)' })
+  @ApiResponse({ status: 400, description: 'Parâmetros inválidos', schema: { $ref: getSchemaPath(ErrorResponse) } })
   async listMessages(
     @OrganizationId() orgId: number,
     @Param('id') id: string,

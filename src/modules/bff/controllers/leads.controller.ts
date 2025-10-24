@@ -3,7 +3,9 @@ import { LeadsService } from '../services/leads.service';
 import { CursorDto, ListLeadsDto } from '../dto/leads.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt.guard';
 import { OrganizationId } from '../../../common/decorators/organization.decorator';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags, ApiOkResponse } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags, ApiOkResponse, ApiQuery, ApiHeader, ApiResponse, getSchemaPath } from '@nestjs/swagger';
+import { ErrorResponse } from '../../../common/swagger/errors';
+import { BffLeadListResponse, BffLeadDetailResponse, BffTimelineResponse } from '../../../common/swagger/success';
 import type { Request, Response } from 'express';
 import { createHash } from 'crypto';
 
@@ -15,7 +17,18 @@ export class LeadsController {
   constructor(private readonly leads: LeadsService) {}
 
   @Get()
-  @ApiOkResponse({ schema: { example: { items: [ { id: 'f1b0...', name: 'Ana', phone: '+55 21 99999-9999', source: 'whatsapp', stage: 'new', createdAt: '2025-10-10T12:34:56.000Z', lastMessageAt: '2025-10-11T10:00:00.000Z', servico_desejado: 'corte-feminino' } ], nextCursor: null } } })
+  @ApiOperation({ summary: 'Lista de leads (paginado por cursor)' })
+  @ApiQuery({ name: 'cursor', required: false, description: 'Cursor opaco para paginação' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Itens por página (1-100, padrão 20)', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } })
+  @ApiQuery({ name: 'dateFrom', required: false, description: 'Filtro de data inicial (inclusive, UTC)', schema: { type: 'string', format: 'date-time' } })
+  @ApiQuery({ name: 'dateTo', required: false, description: 'Filtro de data final (exclusivo, UTC)', schema: { type: 'string', format: 'date-time' } })
+  @ApiQuery({ name: 'q', required: false, description: 'Busca por nome/telefone' })
+  @ApiQuery({ name: 'stage', required: false, description: 'Filtro por estágio' })
+  @ApiQuery({ name: 'source', required: false, description: 'Filtro por origem (whatsapp, instagram, ...)' })
+  @ApiHeader({ name: 'If-None-Match', required: false, description: 'Conditional GET usando ETag' })
+  @ApiOkResponse({ schema: { $ref: getSchemaPath(BffLeadListResponse) } })
+  @ApiResponse({ status: 304, description: 'Not Modified (ETag corresponde ao conteúdo atual)' })
+  @ApiResponse({ status: 400, description: 'Parâmetros inválidos', schema: { $ref: getSchemaPath(ErrorResponse) } })
   async list(
     @OrganizationId() orgId: number,
     @Query() query: ListLeadsDto,
@@ -59,7 +72,10 @@ export class LeadsController {
   @Get(':id')
   @ApiOperation({ summary: 'Detalhe do lead por public_id' })
   @ApiParam({ name: 'id', description: 'Lead public_id (UUID)', example: 'f1b0b0d1-0000-4000-8000-000000000000' })
-  @ApiOkResponse({ schema: { example: { id: 'f1b0...', name: 'Ana', phone: '+55 21 99999-9999', email: 'ana@ex.com', source: 'whatsapp', stage: 'new', createdAt: '2025-10-10T12:34:56.000Z', lastMessageAt: '2025-10-11T10:00:00.000Z', desiredService: 'corte-feminino', serviceLinks: [ { slug: 'corte-feminino', title: 'Corte Feminino', relation: 'desired', ts: '2025-10-10T12:34:56.000Z' } ], attributes: { servico_desejado: 'corte-feminino', bairro: 'Centro', plano_fidelidade: null }, totals: { conversations: 2, messages: 5 } } } })
+  @ApiHeader({ name: 'If-None-Match', required: false, description: 'Conditional GET usando ETag' })
+  @ApiOkResponse({ schema: { $ref: getSchemaPath(BffLeadDetailResponse) } })
+  @ApiResponse({ status: 304, description: 'Not Modified (ETag corresponde ao conteúdo atual)' })
+  @ApiResponse({ status: 404, description: 'Lead não encontrado', schema: { $ref: getSchemaPath(ErrorResponse) } })
   async getDetail(
     @OrganizationId() orgId: number,
     @Param('id') id: string,
@@ -83,6 +99,12 @@ export class LeadsController {
   @Get(':id/timeline')
   @ApiOperation({ summary: 'Timeline do lead (mensagens)' })
   @ApiParam({ name: 'id', description: 'Lead public_id (UUID)', example: 'f1b0b0d1-0000-4000-8000-000000000000' })
+  @ApiQuery({ name: 'cursor', required: false, description: 'Cursor opaco para paginação' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Itens por página (1-100, padrão 20)', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } })
+  @ApiHeader({ name: 'If-None-Match', required: false, description: 'Conditional GET usando ETag' })
+  @ApiOkResponse({ schema: { $ref: getSchemaPath(BffTimelineResponse) } })
+  @ApiResponse({ status: 304, description: 'Not Modified (ETag corresponde ao conteúdo atual)' })
+  @ApiResponse({ status: 400, description: 'Parâmetros inválidos', schema: { $ref: getSchemaPath(ErrorResponse) } })
   async getTimeline(
     @OrganizationId() orgId: number,
     @Param('id') id: string,

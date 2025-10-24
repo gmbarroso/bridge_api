@@ -1,6 +1,8 @@
 import { Controller, Get, Post, Delete, Param, Body, Query } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiBody, ApiParam, ApiQuery, ApiTags, ApiOperation, ApiResponse, ApiExtraModels, getSchemaPath } from '@nestjs/swagger';
+import { ErrorResponse } from '../../../common/swagger/errors';
 import { ApiKeyManagementService, ApiKeyInfo, ApiKeyGeneration } from '../services/api-key-management.service';
+import { ApiKeyGenerationResponse, ApiKeyInfoResponse, ApiKeyUsageResponse, MessageResponse } from '../../../common/swagger/success';
 
 class GenerateApiKeyDto {
   name: string;
@@ -12,6 +14,7 @@ class RotateApiKeyDto {
 }
 
 @ApiTags('API Key Management')
+@ApiExtraModels(ErrorResponse, ApiKeyGenerationResponse, ApiKeyInfoResponse, ApiKeyUsageResponse, MessageResponse)
 @Controller('admin/api-keys')
 export class ApiKeyManagementController {
   constructor(
@@ -20,7 +23,11 @@ export class ApiKeyManagementController {
 
   @Get('organization/:organizationId')
   @ApiOperation({ summary: 'Listar API Keys de uma organização' })
-  @ApiResponse({ status: 200, description: 'Lista de API Keys (sem expor as keys)' })
+  @ApiParam({ name: 'organizationId', type: Number, description: 'ID da organização' })
+  @ApiResponse({ status: 200, description: 'Lista de API Keys (sem expor as keys)', schema: { type: 'array', items: { $ref: getSchemaPath(ApiKeyInfoResponse) } } })
+  @ApiResponse({ status: 401, description: 'Unauthorized', schema: { $ref: getSchemaPath(ErrorResponse) } })
+  @ApiResponse({ status: 403, description: 'Forbidden', schema: { $ref: getSchemaPath(ErrorResponse) } })
+  @ApiResponse({ status: 404, description: 'Organization não encontrada', schema: { $ref: getSchemaPath(ErrorResponse) } })
   async listApiKeys(
     @Param('organizationId') organizationId: number
   ): Promise<ApiKeyInfo[]> {
@@ -32,7 +39,10 @@ export class ApiKeyManagementController {
     summary: 'Gerar nova API Key',
     description: '⚠️ A API Key só é mostrada UMA VEZ! Salve imediatamente.'
   })
-  @ApiResponse({ status: 201, description: 'API Key gerada com sucesso' })
+  @ApiBody({ schema: { example: { organization_id: 1, name: 'Nova API Key - Postman' } } })
+  @ApiResponse({ status: 201, description: 'API Key gerada com sucesso', schema: { $ref: getSchemaPath(ApiKeyGenerationResponse) } })
+  @ApiResponse({ status: 401, description: 'Unauthorized', schema: { $ref: getSchemaPath(ErrorResponse) } })
+  @ApiResponse({ status: 403, description: 'Forbidden', schema: { $ref: getSchemaPath(ErrorResponse) } })
   async generateApiKey(
     @Body() dto: GenerateApiKeyDto
   ): Promise<ApiKeyGeneration> {
@@ -47,7 +57,13 @@ export class ApiKeyManagementController {
     summary: 'Rotacionar API Key',
     description: 'Cria nova key e revoga a antiga. A nova key só é mostrada UMA VEZ!'
   })
-  @ApiResponse({ status: 200, description: 'API Key rotacionada com sucesso' })
+  @ApiParam({ name: 'publicId', description: 'UUID público da API Key a ser rotacionada' })
+  @ApiQuery({ name: 'organizationId', required: true, description: 'ID da organização' })
+  @ApiBody({ schema: { example: { new_name: 'API Key Rotacionada - Prod' } } })
+  @ApiResponse({ status: 200, description: 'API Key rotacionada com sucesso', schema: { $ref: getSchemaPath(ApiKeyGenerationResponse) } })
+  @ApiResponse({ status: 401, description: 'Unauthorized', schema: { $ref: getSchemaPath(ErrorResponse) } })
+  @ApiResponse({ status: 403, description: 'Forbidden', schema: { $ref: getSchemaPath(ErrorResponse) } })
+  @ApiResponse({ status: 404, description: 'API Key não encontrada', schema: { $ref: getSchemaPath(ErrorResponse) } })
   async rotateApiKey(
     @Param('publicId') publicId: string,
     @Query('organizationId') organizationId: number,
@@ -62,7 +78,12 @@ export class ApiKeyManagementController {
 
   @Delete(':publicId')
   @ApiOperation({ summary: 'Revogar API Key' })
-  @ApiResponse({ status: 200, description: 'API Key revogada com sucesso' })
+  @ApiParam({ name: 'publicId', description: 'UUID público da API Key a ser revogada' })
+  @ApiQuery({ name: 'organizationId', required: true, description: 'ID da organização' })
+  @ApiResponse({ status: 200, description: 'API Key revogada com sucesso', schema: { $ref: getSchemaPath(MessageResponse) } })
+  @ApiResponse({ status: 401, description: 'Unauthorized', schema: { $ref: getSchemaPath(ErrorResponse) } })
+  @ApiResponse({ status: 403, description: 'Forbidden', schema: { $ref: getSchemaPath(ErrorResponse) } })
+  @ApiResponse({ status: 404, description: 'API Key não encontrada', schema: { $ref: getSchemaPath(ErrorResponse) } })
   async revokeApiKey(
     @Param('publicId') publicId: string,
     @Query('organizationId') organizationId: number
@@ -73,7 +94,11 @@ export class ApiKeyManagementController {
 
   @Get('organization/:organizationId/usage')
   @ApiOperation({ summary: 'Estatísticas de uso das API Keys' })
-  @ApiResponse({ status: 200, description: 'Estatísticas de uso' })
+  @ApiParam({ name: 'organizationId', type: Number, description: 'ID da organização' })
+  @ApiResponse({ status: 200, description: 'Estatísticas de uso', schema: { $ref: getSchemaPath(ApiKeyUsageResponse) } })
+  @ApiResponse({ status: 401, description: 'Unauthorized', schema: { $ref: getSchemaPath(ErrorResponse) } })
+  @ApiResponse({ status: 403, description: 'Forbidden', schema: { $ref: getSchemaPath(ErrorResponse) } })
+  @ApiResponse({ status: 404, description: 'Organization não encontrada', schema: { $ref: getSchemaPath(ErrorResponse) } })
   async getUsageStats(
     @Param('organizationId') organizationId: number
   ) {

@@ -1,6 +1,25 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { ErrorResponse } from './common/swagger/errors';
+import {
+  MessageResponse,
+  TokenPairResponse,
+  LoginResponse,
+  ApiKeyInfoResponse,
+  ApiKeyGenerationResponse,
+  ApiKeyUsageResponse,
+  BffLeadListItem,
+  BffLeadListResponse,
+  BffLeadDetailTotals,
+  BffLeadDetailResponse,
+  BffServiceLink,
+  BffTimelineMessageItem,
+  BffTimelineResponse,
+  OnboardingWebhookUrls,
+  OnboardingAdminInvite,
+  OnboardingResponse,
+} from './common/swagger/success';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { INestApplication } from '@nestjs/common';
@@ -70,7 +89,31 @@ async function createApp() {
     .addServer('http://localhost:3000', 'Development')
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, config, {
+    extraModels: [
+      ErrorResponse,
+      // Auth
+      MessageResponse,
+      TokenPairResponse,
+      LoginResponse,
+      // API Key Management
+      ApiKeyInfoResponse,
+      ApiKeyGenerationResponse,
+      ApiKeyUsageResponse,
+      // BFF
+      BffLeadListItem,
+      BffLeadListResponse,
+      BffLeadDetailTotals,
+      BffLeadDetailResponse,
+      BffServiceLink,
+      BffTimelineMessageItem,
+      BffTimelineResponse,
+      // Onboarding
+      OnboardingWebhookUrls,
+      OnboardingAdminInvite,
+      OnboardingResponse,
+    ],
+  });
   SwaggerModule.setup('api', app, document);
 
   await app.init();
