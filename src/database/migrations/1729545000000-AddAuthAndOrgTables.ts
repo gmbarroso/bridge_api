@@ -92,25 +92,88 @@ export class AddAuthAndOrgTables1729545000000 implements MigrationInterface {
 
     // Add FKs from existing tables to organizations and suborganizations
     await queryRunner.query(`
-      ALTER TABLE api_keys ADD CONSTRAINT IF NOT EXISTS fk_api_keys_org FOREIGN KEY (organization_id) REFERENCES organizations(id)
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint c
+          JOIN pg_class t ON t.oid = c.conrelid
+          WHERE t.relname = 'api_keys' AND c.conname = 'fk_api_keys_org'
+        ) THEN
+          ALTER TABLE api_keys ADD CONSTRAINT fk_api_keys_org FOREIGN KEY (organization_id) REFERENCES organizations(id);
+        END IF;
+      END $$;
     `);
     await queryRunner.query(`
-      ALTER TABLE leads ADD CONSTRAINT IF NOT EXISTS fk_leads_org FOREIGN KEY (organization_id) REFERENCES organizations(id)
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint c
+          JOIN pg_class t ON t.oid = c.conrelid
+          WHERE t.relname = 'leads' AND c.conname = 'fk_leads_org'
+        ) THEN
+          ALTER TABLE leads ADD CONSTRAINT fk_leads_org FOREIGN KEY (organization_id) REFERENCES organizations(id);
+        END IF;
+      END $$;
     `);
     await queryRunner.query(`
-      ALTER TABLE leads ADD CONSTRAINT IF NOT EXISTS fk_leads_suborg FOREIGN KEY (suborganization_id) REFERENCES suborganizations(id)
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint c
+          JOIN pg_class t ON t.oid = c.conrelid
+          WHERE t.relname = 'leads' AND c.conname = 'fk_leads_suborg'
+        ) THEN
+          ALTER TABLE leads ADD CONSTRAINT fk_leads_suborg FOREIGN KEY (suborganization_id) REFERENCES suborganizations(id);
+        END IF;
+      END $$;
     `);
     await queryRunner.query(`
-      ALTER TABLE conversations ADD CONSTRAINT IF NOT EXISTS fk_conversations_org FOREIGN KEY (organization_id) REFERENCES organizations(id)
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint c
+          JOIN pg_class t ON t.oid = c.conrelid
+          WHERE t.relname = 'conversations' AND c.conname = 'fk_conversations_org'
+        ) THEN
+          ALTER TABLE conversations ADD CONSTRAINT fk_conversations_org FOREIGN KEY (organization_id) REFERENCES organizations(id);
+        END IF;
+      END $$;
     `);
     await queryRunner.query(`
-      ALTER TABLE messages ADD CONSTRAINT IF NOT EXISTS fk_messages_org FOREIGN KEY (organization_id) REFERENCES organizations(id)
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint c
+          JOIN pg_class t ON t.oid = c.conrelid
+          WHERE t.relname = 'messages' AND c.conname = 'fk_messages_org'
+        ) THEN
+          ALTER TABLE messages ADD CONSTRAINT fk_messages_org FOREIGN KEY (organization_id) REFERENCES organizations(id);
+        END IF;
+      END $$;
     `);
     await queryRunner.query(`
-      ALTER TABLE lead_attributes ADD CONSTRAINT IF NOT EXISTS fk_lead_attributes_org FOREIGN KEY (organization_id) REFERENCES organizations(id)
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint c
+          JOIN pg_class t ON t.oid = c.conrelid
+          WHERE t.relname = 'lead_attributes' AND c.conname = 'fk_lead_attributes_org'
+        ) THEN
+          ALTER TABLE lead_attributes ADD CONSTRAINT fk_lead_attributes_org FOREIGN KEY (organization_id) REFERENCES organizations(id);
+        END IF;
+      END $$;
     `);
     await queryRunner.query(`
-      ALTER TABLE form_submissions ADD CONSTRAINT IF NOT EXISTS fk_form_submissions_org FOREIGN KEY (organization_id) REFERENCES organizations(id)
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_constraint c
+          JOIN pg_class t ON t.oid = c.conrelid
+          WHERE t.relname = 'form_submissions' AND c.conname = 'fk_form_submissions_org'
+        ) THEN
+          ALTER TABLE form_submissions ADD CONSTRAINT fk_form_submissions_org FOREIGN KEY (organization_id) REFERENCES organizations(id);
+        END IF;
+      END $$;
     `);
 
     // Optional trigram indexes for quick search

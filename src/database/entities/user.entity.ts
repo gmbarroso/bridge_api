@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, JoinColumn } from 'typeorm';
 import { Organization } from './organization.entity';
 import { Suborganization } from './suborganization.entity';
 
@@ -29,12 +29,14 @@ export class User {
   email_verified_at!: Date | null;
 
   @ManyToOne(() => Organization, { onDelete: 'RESTRICT' })
+  @JoinColumn({ name: 'organization_id' })
   organization!: Organization;
 
   @Column({ type: 'bigint' })
   organization_id!: number;
 
   @ManyToOne(() => Suborganization, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'suborganization_id' })
   suborganization!: Suborganization | null;
 
   @Column({ type: 'bigint', nullable: true })

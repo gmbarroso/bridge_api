@@ -8,9 +8,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { IngestModule } from './modules/ingest/ingest.module';
 import { BffModule } from './modules/bff/bff.module';
 import * as entities from './database/entities';
-import { MetricsService } from './common/observability/metrics.service';
 import { MetricsController } from './common/observability/metrics.controller';
-import { CacheService } from './common/cache/cache.service';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
@@ -36,10 +35,11 @@ import { CacheService } from './common/cache/cache.service';
       inject: [ConfigService],
     }),
     AuthModule,
-  IngestModule,
-  BffModule,
+    IngestModule,
+    BffModule,
+    CommonModule,
   ],
   controllers: [AppController, MetricsController],
-  providers: [AppService, MetricsService, CacheService],
+  providers: [AppService],
 })
 export class AppModule {}

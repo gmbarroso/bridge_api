@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, JoinColumn } from 'typeorm';
 import { Organization } from './organization.entity';
 
 @Entity('suborganizations')
@@ -10,6 +10,7 @@ export class Suborganization {
   public_id!: string;
 
   @ManyToOne(() => Organization, { onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'organization_id' })
   organization!: Organization;
 
   @Column({ type: 'bigint' })
