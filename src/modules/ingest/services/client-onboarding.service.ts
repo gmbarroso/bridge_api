@@ -23,9 +23,11 @@ export interface OnboardingResult {
   webhookUrls: {
     leadUpsert: string;
     leadAttribute: string;
+    leadService: string;
     message: string;
   };
   testCommands: string[];
+  checklist: string[];
   adminInvite?: {
     email: string;
     role: 'admin';
@@ -72,6 +74,7 @@ export class ClientOnboardingService {
     const webhookUrls = {
       leadUpsert: `${baseUrl}/ingest/lead-upsert`,
       leadAttribute: `${baseUrl}/ingest/lead-attribute`,
+      leadService: `${baseUrl}/ingest/lead-service`,
       message: `${baseUrl}/ingest/message`,
     };
 
@@ -81,6 +84,16 @@ export class ClientOnboardingService {
       apiKeyData.apiKey,
       clientData
     );
+
+    // 5b. Checklist resumido para o cliente
+    const checklist: string[] = [
+      'Configurar API Key no bot (x-api-key)',
+      `Definir webhook para ${baseUrl}/ingest/lead-upsert`,
+      'Testar criação de lead (lead-upsert)',
+      'Vincular serviço desejado ao lead (lead-service)',
+      'Enviar mensagem de teste (message)',
+      'Verificar lead e serviço no dashboard/BFF',
+    ];
 
     // 6. (Opcional) Gerar convite de Owner/Admin para o responsável
     let adminInvite: OnboardingResult['adminInvite'] | undefined = undefined;
@@ -101,6 +114,7 @@ export class ClientOnboardingService {
       setupInstructions,
       webhookUrls,
       testCommands,
+      checklist,
       adminInvite,
     };
   }
@@ -377,6 +391,11 @@ const bridgeAPI = {
   -H "x-api-key: ${apiKey}" \\
   -H "Content-Type: application/json" \\
   -d '{"phone":"+5511999999999","key":"servico","value":"${clientData.businessType}","source":"teste"}'`,
+      
+      `curl -X POST ${baseUrl}/ingest/lead-service \\
+  -H "x-api-key: ${apiKey}" \\
+  -H "Content-Type: application/json" \\
+  -d '{"phone":"+5511999999999","service_slug":"corte-feminino","relation":"desired"}'`,
       
       `curl -X POST ${baseUrl}/ingest/message \\
   -H "x-api-key: ${apiKey}" \\

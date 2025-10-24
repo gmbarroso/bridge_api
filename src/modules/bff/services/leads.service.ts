@@ -75,7 +75,7 @@ export class LeadsService {
     const sql = `
       SELECT
         luv.id, luv.public_id, luv.name, luv.phone, luv.email, luv.source, luv.stage,
-        luv.created_at, luv.last_message_at
+        luv.created_at, luv.last_message_at, luv.servico_desejado
       FROM lead_unified_view luv
       WHERE ${where}
       ORDER BY luv.created_at DESC, luv.id DESC
@@ -102,6 +102,7 @@ export class LeadsService {
       stage: r.stage,
       createdAt: r.created_at,
       lastMessageAt: r.last_message_at,
+      servico_desejado: r.servico_desejado,
     }));
 
     let nextCursor: string | null = null;
@@ -146,6 +147,15 @@ export class LeadsService {
     const rows: any[] = await this.dataSource.query(sql, [orgId, leadPublicId]);
     const r = rows[0];
     if (!r) return null;
+    // Fetch all service links for this lead (most recent first)
+    const linksSql = `
+      SELECT s.slug, s.title, lsl.relation, lsl.ts
+      FROM lead_service_links lsl
+      JOIN services s ON s.id = lsl.service_id
+      WHERE lsl.organization_id = $1 AND lsl.lead_id = $2
+      ORDER BY lsl.ts DESC, lsl.id DESC
+    `;
+    const linkRows: any[] = await this.dataSource.query(linksSql, [orgId, r.id]);
     const detail: LeadDetail = {
       id: r.public_id,
       name: r.name,
@@ -155,6 +165,13 @@ export class LeadsService {
       stage: r.stage,
       createdAt: r.created_at,
       lastMessageAt: r.last_message_at,
+      desiredService: r.servico_desejado,
+      serviceLinks: linkRows.map((lr) => ({
+        slug: lr.slug,
+        title: lr.title ?? null,
+        relation: lr.relation,
+        ts: lr.ts,
+      })),
       attributes: {
         servico_desejado: r.servico_desejado,
         bairro: r.bairro,

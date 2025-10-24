@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Lead } from '../../../database/entities/lead.entity';
@@ -9,6 +9,9 @@ import { LeadUpsertDto, LeadUpsertResponseDto } from '../dto/lead-upsert.dto';
 import { LeadAttributeDto } from '../dto/lead-attribute.dto';
 import { MessageDto } from '../dto/message.dto';
 import { IdResolverService } from './id-resolver.service';
+import { Service } from '../../../database/entities/service.entity';
+import { LeadServiceLink } from '../../../database/entities/lead-service-link.entity';
+import { LeadServiceDto } from '../dto/lead-service.dto';
 
 @Injectable()
 export class IngestService {
@@ -23,6 +26,10 @@ export class IngestService {
     private readonly messageRepository: Repository<Message>,
     @InjectRepository(LeadAttribute)
     private readonly leadAttributeRepository: Repository<LeadAttribute>,
+    @InjectRepository(Service)
+    private readonly serviceRepository: Repository<Service>,
+    @InjectRepository(LeadServiceLink)
+    private readonly leadServiceLinkRepository: Repository<LeadServiceLink>,
     private readonly idResolverService: IdResolverService,
     private readonly dataSource: DataSource,
   ) {}
@@ -125,6 +132,19 @@ export class IngestService {
     organizationId: number,
     dto: LeadAttributeDto,
   ): Promise<void> {
+    // Compat: se a chave indicar serviço, redirecionar para lead-service
+    const serviceKeys = new Set(['servico_desejado','servico_interesse','service','service_slug']);
+    if (serviceKeys.has(dto.key)) {
+      const lsDto: LeadServiceDto = {
+        lead_public_id: dto.lead_public_id,
+        lead_id: dto.lead_id,
+        service_slug: dto.value,
+        relation: dto.key === 'servico_interesse' ? 'interested' : 'desired',
+        source: dto.source || 'attribute_compat',
+      };
+      await this.addLeadService(organizationId, lsDto);
+      return;
+    }
     const leadId = await this.idResolverService.resolveLeadId(
       organizationId,
       dto.lead_public_id,
@@ -217,5 +237,58 @@ export class IngestService {
         `Added ${dto.direction} message (${dto.type}) to conversation ${conversation.id}`,
       );
     });
+  }
+
+  /**
+   * Vincular um serviço a um lead, resolvendo service por slug/title/public_id
+   */
+  async addLeadService(organizationId: number, dto: LeadServiceDto): Promise<void> {
+    const leadId = await this.idResolverService.resolveLeadId(
+      organizationId,
+      dto.lead_public_id,
+      dto.lead_id,
+    );
+
+    // Resolver service
+    let service: Service | null = null;
+    if (dto.service_public_id) {
+      service = await this.serviceRepository.findOne({ where: { public_id: dto.service_public_id, organization_id: organizationId } });
+    }
+    if (!service && dto.service_slug) {
+      service = await this.serviceRepository.findOne({ where: { slug: dto.service_slug, organization_id: organizationId } });
+    }
+    if (!service && dto.service_title) {
+      service = await this.serviceRepository.findOne({ where: { title: dto.service_title, organization_id: organizationId } });
+    }
+    if (!service) {
+      throw new NotFoundException('Service not found for provided identifiers');
+    }
+
+    const relation = dto.relation || 'desired';
+
+    // Upsert link
+    const existing = await this.leadServiceLinkRepository.findOne({ where: {
+      organization_id: organizationId,
+      lead_id: leadId,
+      service_id: service.id,
+      relation,
+    }});
+
+    if (existing) {
+      // update timestamp and source
+      existing.source = dto.source || existing.source;
+      existing.ts = new Date();
+      await this.leadServiceLinkRepository.save(existing);
+    } else {
+      await this.leadServiceLinkRepository.save({
+        organization_id: organizationId,
+        lead_id: leadId,
+        service_id: service.id,
+        relation,
+        source: dto.source || null,
+      });
+    }
+
+    this.logger.log(`Linked lead ${leadId} to service ${service.slug} (${relation})`);
   }
 }

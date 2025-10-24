@@ -15,7 +15,7 @@ export class LeadsController {
   constructor(private readonly leads: LeadsService) {}
 
   @Get()
-  @ApiOkResponse({ schema: { example: { items: [ { id: 'f1b0...', name: 'Ana', phone: '+55 21 99999-9999', source: 'whatsapp', stage: 'new', createdAt: '2025-10-10T12:34:56.000Z', lastMessageAt: '2025-10-11T10:00:00.000Z' } ], nextCursor: null } } })
+  @ApiOkResponse({ schema: { example: { items: [ { id: 'f1b0...', name: 'Ana', phone: '+55 21 99999-9999', source: 'whatsapp', stage: 'new', createdAt: '2025-10-10T12:34:56.000Z', lastMessageAt: '2025-10-11T10:00:00.000Z', servico_desejado: 'corte-feminino' } ], nextCursor: null } } })
   async list(
     @OrganizationId() orgId: number,
     @Query() query: ListLeadsDto,
@@ -39,6 +39,7 @@ export class LeadsController {
         createdAt: i.createdAt,
         lastMessageAt: i.lastMessageAt,
         stage: i.stage,
+        servico_desejado: i.servico_desejado ?? null,
       })),
       nextCursor: result.nextCursor || null,
     });
@@ -58,7 +59,7 @@ export class LeadsController {
   @Get(':id')
   @ApiOperation({ summary: 'Detalhe do lead por public_id' })
   @ApiParam({ name: 'id', description: 'Lead public_id (UUID)', example: 'f1b0b0d1-0000-4000-8000-000000000000' })
-  @ApiOkResponse({ schema: { example: { id: 'f1b0...', name: 'Ana', phone: '+55 21 99999-9999', email: 'ana@ex.com', source: 'whatsapp', stage: 'new', createdAt: '2025-10-10T12:34:56.000Z', lastMessageAt: '2025-10-11T10:00:00.000Z', attributes: { servico_desejado: 'corte', bairro: 'Centro', plano_fidelidade: null }, totals: { conversations: 2, messages: 5 } } } })
+  @ApiOkResponse({ schema: { example: { id: 'f1b0...', name: 'Ana', phone: '+55 21 99999-9999', email: 'ana@ex.com', source: 'whatsapp', stage: 'new', createdAt: '2025-10-10T12:34:56.000Z', lastMessageAt: '2025-10-11T10:00:00.000Z', desiredService: 'corte-feminino', serviceLinks: [ { slug: 'corte-feminino', title: 'Corte Feminino', relation: 'desired', ts: '2025-10-10T12:34:56.000Z' } ], attributes: { servico_desejado: 'corte-feminino', bairro: 'Centro', plano_fidelidade: null }, totals: { conversations: 2, messages: 5 } } } })
   async getDetail(
     @OrganizationId() orgId: number,
     @Param('id') id: string,

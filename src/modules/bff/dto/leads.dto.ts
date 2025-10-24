@@ -40,6 +40,8 @@ export type LeadListItem = {
   stage: string;
   createdAt: string;
   lastMessageAt: string | null;
+  // Enriched from lead_unified_view when available
+  servico_desejado?: string | null;
   firstResponseSlaMin?: number | null;
   totalMessages?: number | null;
   lastMessageSnippet?: string | null;
@@ -71,6 +73,15 @@ export type LeadDetail = {
   stage: string;
   createdAt: string;
   lastMessageAt: string | null;
+  // Convenience top-level field for UI usage (also present in attributes)
+  desiredService?: string | null;
+  // All linked services for this lead (most recent first)
+  serviceLinks?: Array<{
+    slug: string;
+    title: string | null;
+    relation: string;
+    ts: string;
+  }>;
   attributes?: Record<string, string | null>;
   totals?: {
     conversations: number;

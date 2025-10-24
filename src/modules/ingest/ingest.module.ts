@@ -5,6 +5,8 @@ import { Conversation } from '../../database/entities/conversation.entity';
 import { Message } from '../../database/entities/message.entity';
 import { LeadAttribute } from '../../database/entities/lead-attribute.entity';
 import { AuthModule } from '../auth/auth.module';
+import { Service } from '../../database/entities/service.entity';
+import { LeadServiceLink } from '../../database/entities/lead-service-link.entity';
 import { IngestController } from './controllers/ingest.controller';
 import { IngestService } from './services/ingest.service';
 import { IdResolverService } from './services/id-resolver.service';
@@ -23,6 +25,8 @@ import { ClientOnboardingService } from './services/client-onboarding.service';
       Conversation,
       Message,
       LeadAttribute,
+      Service,
+      LeadServiceLink,
       ApiKey,
       Organization,
       VerificationToken,
