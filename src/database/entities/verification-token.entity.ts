@@ -1,4 +1,4 @@
-import { Column, Entity, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, ManyToOne, PrimaryGeneratedColumn, JoinColumn } from 'typeorm';
 import { User } from './user.entity';
 import { Organization } from './organization.entity';
 
@@ -7,8 +7,9 @@ export class VerificationToken {
   @PrimaryGeneratedColumn({ type: 'bigint' })
   id!: number;
 
-  @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  user!: User;
+  @ManyToOne(() => User, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'user_id' })
+  user!: User | null;
 
   @Column({ type: 'bigint', nullable: true })
   user_id!: number | null;
@@ -20,6 +21,7 @@ export class VerificationToken {
   type!: 'email_verify' | 'invite';
 
   @ManyToOne(() => Organization, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'organization_id' })
   organization?: Organization | null;
 
   @Column({ type: 'bigint', nullable: true })

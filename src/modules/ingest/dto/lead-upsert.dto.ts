@@ -83,6 +83,13 @@ export class LeadUpsertResponseDto {
   created: boolean;
 
   @ApiProperty({
+    description: 'Whether the lead was updated (fields like name/email patched)',
+    example: true,
+    required: false,
+  })
+  updated?: boolean;
+
+  @ApiProperty({
     description: 'Current lead stage',
     example: 'new',
   })

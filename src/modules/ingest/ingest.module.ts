@@ -17,6 +17,9 @@ import { ApiKeyManagementController } from './controllers/api-key-management.con
 import { ClientOnboardingController } from './controllers/client-onboarding.controller';
 import { ApiKeyManagementService } from './services/api-key-management.service';
 import { ClientOnboardingService } from './services/client-onboarding.service';
+import { ServicesAdminController } from './controllers/services-admin.controller';
+import { LeadServiceEvent } from '../../database/entities/lead-service-event.entity';
+import { M2MLeadsController } from './controllers/m2m-leads.controller';
 
 @Module({
   imports: [
@@ -27,13 +30,14 @@ import { ClientOnboardingService } from './services/client-onboarding.service';
       LeadAttribute,
       Service,
       LeadServiceLink,
+      LeadServiceEvent,
       ApiKey,
       Organization,
       VerificationToken,
     ]),
     AuthModule,
   ],
-  controllers: [IngestController, ApiKeyManagementController, ClientOnboardingController],
+  controllers: [IngestController, ApiKeyManagementController, ClientOnboardingController, ServicesAdminController, M2MLeadsController],
   providers: [IngestService, IdResolverService, ApiKeyManagementService, ClientOnboardingService],
   exports: [IngestService, IdResolverService],
 })

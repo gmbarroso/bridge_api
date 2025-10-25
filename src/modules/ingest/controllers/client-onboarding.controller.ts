@@ -3,13 +3,31 @@ import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiExtraModels, getSchemaP
 import { ErrorResponse } from '../../../common/swagger/errors';
 import { OnboardingResponse } from '../../../common/swagger/success';
 import { ClientOnboardingService, ClientOnboardingData, OnboardingResult } from '../services/client-onboarding.service';
+import { IsArray, ArrayMinSize, IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
 
 class OnboardClientDto {
+  @IsString()
   clientName: string;
+
+  @IsString()
   businessType: string;
+
+  @IsOptional()
+  @IsString()
   phone?: string;
+
+  @IsOptional()
+  @IsEmail()
   email?: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  @IsIn(['whatsapp', 'instagram', 'telegram'], { each: true })
   channels: string[];
+
+  @IsString()
+  @IsIn(['evolution', 'n8n', 'meta_business'])
   botPlatform: string;
 }
 

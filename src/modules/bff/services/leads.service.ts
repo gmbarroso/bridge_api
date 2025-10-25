@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
-import { CursorDto, LeadDetail, LeadTimelineResponse, ListLeadsDto, ListLeadsResponse } from '../dto/leads.dto';
+import { CursorDto, LeadDetail, LeadServiceHistoryResponse, LeadTimelineResponse, ListLeadsDto, ListLeadsResponse } from '../dto/leads.dto';
 import { CacheService } from '../../../common/cache/cache.service';
 
 function normalizePhone(input?: string | null): string | undefined {
@@ -303,6 +303,56 @@ export class LeadsService {
     if (hasMore) {
       const last = rows[limit - 1];
       nextCursor = Buffer.from(`${last.created_at}|${last.id}`, 'utf8').toString('base64');
+    }
+
+    return { items, nextCursor };
+  }
+
+  async serviceHistory(orgId: number, leadPublicId: string, dto: CursorDto): Promise<LeadServiceHistoryResponse> {
+    const limit = dto.limit ?? 20;
+
+    let cursorTs: string | undefined;
+    let cursorId: string | undefined;
+    if (dto.cursor) {
+      try {
+        const raw = Buffer.from(dto.cursor, 'base64').toString('utf8');
+        [cursorTs, cursorId] = raw.split('|');
+      } catch {}
+    }
+
+    const params: any[] = [orgId, leadPublicId];
+    let where = `lse.organization_id = $1 AND lse.lead_id = (SELECT id FROM leads WHERE organization_id = $1 AND public_id = $2)`;
+    if (cursorTs && cursorId) {
+      params.push(cursorTs, cursorId);
+      where += ` AND (lse.ts, lse.id) < ($${params.length - 1}::timestamptz, $${params.length}::bigint)`;
+    }
+
+    const sql = `
+      SELECT lse.id, lse.public_id, lse.ts, lse.relation, lse.source, s.slug, s.title
+      FROM lead_service_events lse
+      JOIN services s ON s.id = lse.service_id
+      WHERE ${where}
+      ORDER BY lse.ts DESC, lse.id DESC
+      LIMIT ${limit + 1}
+    `;
+    const rows: any[] = await this.dataSource.query(sql, params);
+    const hasMore = rows.length > limit;
+    const page = rows.slice(0, limit);
+
+    const items = page.map((r) => ({
+      kind: 'service_event' as const,
+      id: r.public_id,
+      createdAt: r.ts,
+      slug: r.slug,
+      title: r.title ?? null,
+      relation: r.relation,
+      source: r.source ?? null,
+    }));
+
+    let nextCursor: string | null = null;
+    if (hasMore) {
+      const last = rows[limit - 1];
+      nextCursor = Buffer.from(`${last.ts}|${last.id}`, 'utf8').toString('base64');
     }
 
     return { items, nextCursor };

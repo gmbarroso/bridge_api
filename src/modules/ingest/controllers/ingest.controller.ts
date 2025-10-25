@@ -97,14 +97,14 @@ export class IngestController {
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({
     summary: 'Add lead attribute',
-    description: 'Adds or updates a key-value attribute for a lead. For service-related keys (servico_desejado, servico_interesse, service, service_slug), the request is routed internally to the new relational services endpoint; prefer POST /ingest/lead-service for new integrations.',
+          description: 'Adds or updates a key-value attribute for a lead. DEPRECATED for service-related keys: do not send services via attributes. Use POST /ingest/lead-service (this endpoint keeps a temporary compat path that routes keys servico_desejado/servico_interesse/service/service_slug to lead-service).',
   })
   @ApiBody({
     type: LeadAttributeDto,
     description: 'Lead attribute as key/value with optional source and lead identifier (public_id preferred).',
     examples: {
       byPublicId: { summary: 'By lead_public_id', value: { lead_public_id: '00000000-0000-4000-8000-000000000000', key: 'bairro', value: 'Centro', source: 'bot_whatsapp' } },
-      serviceCompat: { summary: 'Service (compat path)', value: { lead_public_id: '00000000-0000-4000-8000-000000000000', key: 'servico_desejado', value: 'corte-feminino', source: 'bot_whatsapp' } },
+          serviceCompat: { summary: 'DEPRECATED: Service via attribute (compat path)', value: { lead_public_id: '00000000-0000-4000-8000-000000000000', key: 'servico_desejado', value: 'corte-feminino', source: 'bot_whatsapp' } },
     },
   })
   @ApiResponse({

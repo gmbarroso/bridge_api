@@ -11,7 +11,9 @@ import { MessageDto } from '../dto/message.dto';
 import { IdResolverService } from './id-resolver.service';
 import { Service } from '../../../database/entities/service.entity';
 import { LeadServiceLink } from '../../../database/entities/lead-service-link.entity';
+import { LeadServiceEvent } from '../../../database/entities/lead-service-event.entity';
 import { LeadServiceDto } from '../dto/lead-service.dto';
+import { CursorDto } from '../dto/cursor.dto';
 
 @Injectable()
 export class IngestService {
@@ -30,6 +32,8 @@ export class IngestService {
     private readonly serviceRepository: Repository<Service>,
     @InjectRepository(LeadServiceLink)
     private readonly leadServiceLinkRepository: Repository<LeadServiceLink>,
+  @InjectRepository(LeadServiceEvent)
+  private readonly leadServiceEventRepository: Repository<LeadServiceEvent>,
     private readonly idResolverService: IdResolverService,
     private readonly dataSource: DataSource,
   ) {}
@@ -41,6 +45,7 @@ export class IngestService {
     return this.dataSource.transaction(async (manager) => {
       let lead: Lead | null = null;
       let created = false;
+      let updated = false;
       let conversation: Conversation | null = null;
 
       // Primeiro, tentar encontrar por app + conversation_id
@@ -90,6 +95,20 @@ export class IngestService {
         lead = await manager.save(Lead, lead);
         created = true;
         this.logger.log(`Created new lead ${lead.id} for phone ${dto.phone}`);
+      } else {
+        // Atualizar campos básicos se informados (idempotente)
+        const patch: any = {};
+        if (dto.name && dto.name !== lead.name) patch.name = dto.name;
+        if (dto.email !== undefined && dto.email !== lead.email)
+          patch.email = dto.email || null;
+        if (Object.keys(patch).length > 0) {
+          await manager.update(Lead, lead.id, patch);
+          Object.assign(lead, patch);
+          updated = true;
+          this.logger.log(
+            `Updated lead ${lead.id} with patch: ${JSON.stringify(patch)}`,
+          );
+        }
       }
 
       // Criar ou atualizar conversa se necessário
@@ -122,6 +141,7 @@ export class IngestService {
         lead_id: lead.id,
         lead_public_id: lead.public_id,
         created,
+        updated,
         stage: lead.stage,
         conversation_public_id: conversation?.public_id,
       };
@@ -160,6 +180,16 @@ export class IngestService {
     });
 
     await this.leadAttributeRepository.save(attribute);
+
+    // Opcional: refletir atributos canônicos no lead principal
+    if (dto.key === 'name' || dto.key === 'nome') {
+      await this.leadRepository.update(leadId, { name: dto.value });
+      this.logger.log(`Reflected attribute name into lead ${leadId}: ${dto.value}`);
+    }
+    if (dto.key === 'email') {
+      await this.leadRepository.update(leadId, { email: dto.value });
+      this.logger.log(`Reflected attribute email into lead ${leadId}: ${dto.value}`);
+    }
 
     this.logger.log(
       `Added attribute ${dto.key}=${dto.value} to lead ${leadId}`,
@@ -290,5 +320,88 @@ export class IngestService {
     }
 
     this.logger.log(`Linked lead ${leadId} to service ${service.slug} (${relation})`);
+
+    // Append a historical event into lead_service_events (append-only)
+    await this.leadServiceEventRepository.save({
+      organization_id: organizationId,
+      lead_id: leadId,
+      service_id: service.id,
+      relation,
+      source: dto.source || 'lead_service',
+    });
+    this.logger.log(`Recorded service_event for lead ${leadId}: ${service.slug}/${relation}`);
+  }
+
+  /**
+   * Histórico de serviços (M2M) com paginação por cursor
+   */
+  async getLeadServiceHistory(
+    organizationId: number,
+    leadPublicId: string,
+    dto: CursorDto,
+  ): Promise<{ items: Array<{ id: string; createdAt: string; slug: string; title: string | null; relation: string; source: string | null }>; nextCursor: string | null } > {
+    const limit = dto.limit ?? 20;
+
+    let cursorTs: string | undefined;
+    let cursorId: string | undefined;
+    if (dto.cursor) {
+      try {
+        const raw = Buffer.from(dto.cursor, 'base64').toString('utf8');
+        [cursorTs, cursorId] = raw.split('|');
+      } catch {
+        // ignore invalid cursor
+      }
+    }
+
+    const params: any[] = [organizationId, leadPublicId];
+    let where = `lse.organization_id = $1 AND lse.lead_id = (SELECT id FROM leads WHERE organization_id = $1 AND public_id = $2)`;
+    if (dto.relation) {
+      params.push(dto.relation);
+      where += ` AND lse.relation = $${params.length}`;
+    }
+    if (cursorTs && cursorId) {
+      params.push(cursorTs, cursorId);
+      where += ` AND (lse.ts, lse.id) < ($${params.length - 1}::timestamptz, $${params.length}::bigint)`;
+    }
+
+    const sql = `
+      SELECT lse.id, lse.public_id, lse.ts, lse.relation, lse.source, s.slug, s.title
+      FROM lead_service_events lse
+      JOIN services s ON s.id = lse.service_id
+      WHERE ${where}
+      ORDER BY lse.ts DESC, lse.id DESC
+      LIMIT ${limit + 1}
+    `;
+    const rows: any[] = await this.dataSource.query(sql, params);
+    const hasMore = rows.length > limit;
+    const page = rows.slice(0, limit);
+    const items = page.map((r) => ({
+      id: r.public_id,
+      createdAt: r.ts,
+      slug: r.slug,
+      title: r.title ?? null,
+      relation: r.relation,
+      source: r.source ?? null,
+    }));
+
+    let nextCursor: string | null = null;
+    if (hasMore) {
+      const last = rows[limit - 1];
+      nextCursor = Buffer.from(`${last.ts}|${last.id}`, 'utf8').toString('base64');
+    }
+
+    return { items, nextCursor };
+  }
+
+  async getLeadConsumedServices(
+    organizationId: number,
+    leadPublicId: string,
+    dto: CursorDto,
+  ): Promise<{ items: Array<{ id: string; createdAt: string; slug: string; title: string | null; relation: string; source: string | null }>; nextCursor: string | null } > {
+    // Force relation to 'purchased'
+    return this.getLeadServiceHistory(organizationId, leadPublicId, {
+      ...dto,
+      relation: 'purchased',
+    } as CursorDto);
   }
 }

@@ -103,3 +103,18 @@ export type LeadTimelineResponse = {
   items: LeadTimelineItem[];
   nextCursor?: string | null;
 };
+
+export type LeadServiceEventItem = {
+  kind: 'service_event';
+  id: string; // public_id
+  createdAt: string;
+  slug: string;
+  title: string | null;
+  relation: 'interested' | 'desired' | 'purchased' | 'recommended';
+  source: string | null;
+};
+
+export type LeadServiceHistoryResponse = {
+  items: LeadServiceEventItem[];
+  nextCursor?: string | null;
+};

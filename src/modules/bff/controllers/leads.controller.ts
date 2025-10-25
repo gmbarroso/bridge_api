@@ -5,7 +5,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt.guard';
 import { OrganizationId } from '../../../common/decorators/organization.decorator';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiTags, ApiOkResponse, ApiQuery, ApiHeader, ApiResponse, getSchemaPath } from '@nestjs/swagger';
 import { ErrorResponse } from '../../../common/swagger/errors';
-import { BffLeadListResponse, BffLeadDetailResponse, BffTimelineResponse } from '../../../common/swagger/success';
+import { BffLeadListResponse, BffLeadDetailResponse, BffTimelineResponse, BffServiceHistoryResponse } from '../../../common/swagger/success';
 import type { Request, Response } from 'express';
 import { createHash } from 'crypto';
 
@@ -114,6 +114,35 @@ export class LeadsController {
   ) {
     const result = await this.leads.timeline(orgId, id, query);
     const fingerprint = JSON.stringify({ orgId, id, cursor: query.cursor || null, limit: query.limit || 20, items: result.items.map(i => ({ id: i.id, createdAt: i.createdAt, direction: i.direction, type: i.type })), nextCursor: result.nextCursor || null });
+    const etag = 'W/"' + createHash('sha1').update(fingerprint).digest('hex') + '"';
+    const ifNoneMatch = req.headers['if-none-match'];
+    if (ifNoneMatch && ifNoneMatch === etag) {
+      res.status(304).end();
+      return;
+    }
+    res.setHeader('ETag', etag);
+    res.setHeader('Cache-Control', 'private, must-revalidate');
+    res.status(200).json(result);
+  }
+
+  @Get(':id/services/history')
+  @ApiOperation({ summary: 'Histórico de serviços do lead' })
+  @ApiParam({ name: 'id', description: 'Lead public_id (UUID)', example: 'f1b0b0d1-0000-4000-8000-000000000000' })
+  @ApiQuery({ name: 'cursor', required: false, description: 'Cursor opaco para paginação' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Itens por página (1-100, padrão 20)', schema: { type: 'integer', minimum: 1, maximum: 100, default: 20 } })
+  @ApiHeader({ name: 'If-None-Match', required: false, description: 'Conditional GET usando ETag' })
+  @ApiOkResponse({ schema: { $ref: getSchemaPath(BffServiceHistoryResponse) } })
+  @ApiResponse({ status: 304, description: 'Not Modified (ETag corresponde ao conteúdo atual)' })
+  @ApiResponse({ status: 400, description: 'Parâmetros inválidos', schema: { $ref: getSchemaPath(ErrorResponse) } })
+  async getServiceHistory(
+    @OrganizationId() orgId: number,
+    @Param('id') id: string,
+    @Query() query: CursorDto,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const result = await this.leads.serviceHistory(orgId, id, query);
+    const fingerprint = JSON.stringify({ orgId, id, cursor: query.cursor || null, limit: query.limit || 20, items: result.items.map(i => ({ createdAt: i.createdAt, slug: i.slug, relation: i.relation })), nextCursor: result.nextCursor || null });
     const etag = 'W/"' + createHash('sha1').update(fingerprint).digest('hex') + '"';
     const ifNoneMatch = req.headers['if-none-match'];
     if (ifNoneMatch && ifNoneMatch === etag) {

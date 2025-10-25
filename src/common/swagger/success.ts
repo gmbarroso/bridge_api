@@ -212,6 +212,37 @@ export class BffTimelineResponse {
   nextCursor!: string | null;
 }
 
+export class BffServiceEventItem {
+  @ApiProperty({ example: 'service_event' })
+  kind!: 'service_event';
+
+  @ApiProperty({ example: 'se1...' })
+  id!: string;
+
+  @ApiProperty({ example: '2025-10-11T10:00:00.000Z' })
+  createdAt!: string;
+
+  @ApiProperty({ example: 'corte-feminino' })
+  slug!: string;
+
+  @ApiProperty({ example: 'Corte Feminino', nullable: true })
+  title!: string | null;
+
+  @ApiProperty({ example: 'desired', enum: ['desired','interested','purchased','recommended'] })
+  relation!: 'desired' | 'interested' | 'purchased' | 'recommended';
+
+  @ApiProperty({ example: 'bot_whatsapp', nullable: true })
+  source!: string | null;
+}
+
+export class BffServiceHistoryResponse {
+  @ApiProperty({ type: [BffServiceEventItem] })
+  items!: BffServiceEventItem[];
+
+  @ApiProperty({ example: null, nullable: true })
+  nextCursor!: string | null;
+}
+
 // -------- Onboarding Models --------
 
 export class OnboardingWebhookUrls {

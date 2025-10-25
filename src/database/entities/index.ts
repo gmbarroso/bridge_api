@@ -12,3 +12,4 @@ export { VerificationToken } from './verification-token.entity';
 export { PasswordResetToken } from './password-reset-token.entity';
 export { Service } from './service.entity';
 export { LeadServiceLink } from './lead-service-link.entity';
+export { LeadServiceEvent } from './lead-service-event.entity';
