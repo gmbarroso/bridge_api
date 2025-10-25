@@ -1,9 +1,32 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
+import { ErrorResponse } from './common/swagger/errors';
+import {
+  MessageResponse,
+  TokenPairResponse,
+  LoginResponse,
+  ApiKeyInfoResponse,
+  ApiKeyGenerationResponse,
+  ApiKeyUsageResponse,
+  BffLeadListItem,
+  BffLeadListResponse,
+  BffLeadDetailTotals,
+  BffLeadDetailResponse,
+  BffServiceLink,
+  BffTimelineMessageItem,
+  BffTimelineResponse,
+  OnboardingWebhookUrls,
+  OnboardingAdminInvite,
+  OnboardingResponse,
+} from './common/swagger/success';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { INestApplication } from '@nestjs/common';
+import { RequestContextInterceptor } from './common/interceptors/request-context.interceptor';
+import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
+import { SecurityAuditInterceptor } from './common/interceptors/security-audit.interceptor';
+import { MetricsService } from './common/observability/metrics.service';
 
 let cachedApp: INestApplication;
 
@@ -14,8 +37,6 @@ async function createApp() {
 
   const app = await NestFactory.create(AppModule);
   const configService = app.get(ConfigService);
-
-  // Enable CORS with restrictions
   const allowedOrigins = configService.get<string>('cors.allowedOrigins', '*');
   app.enableCors({
     origin: allowedOrigins === '*' ? true : allowedOrigins.split(',').map(origin => origin.trim()),
@@ -38,10 +59,26 @@ async function createApp() {
     }),
   );
 
+  const metricsService = app.get(MetricsService);
+  app.useGlobalInterceptors(
+    new RequestContextInterceptor(),
+    new MetricsInterceptor(metricsService),
+    new SecurityAuditInterceptor(),
+  );
+
   const config = new DocumentBuilder()
     .setTitle('Bridge API')
     .setDescription('Bridge API - Sistema de Ingestão de Leads')
     .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'JWT de acesso para endpoints do BFF/Admin',
+      },
+      'BearerAuth',
+    )
     .addApiKey({
       type: 'apiKey',
       name: 'x-api-key',
@@ -52,7 +89,31 @@ async function createApp() {
     .addServer('http://localhost:3000', 'Development')
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
+  const document = SwaggerModule.createDocument(app, config, {
+    extraModels: [
+      ErrorResponse,
+      // Auth
+      MessageResponse,
+      TokenPairResponse,
+      LoginResponse,
+      // API Key Management
+      ApiKeyInfoResponse,
+      ApiKeyGenerationResponse,
+      ApiKeyUsageResponse,
+      // BFF
+      BffLeadListItem,
+      BffLeadListResponse,
+      BffLeadDetailTotals,
+      BffLeadDetailResponse,
+      BffServiceLink,
+      BffTimelineMessageItem,
+      BffTimelineResponse,
+      // Onboarding
+      OnboardingWebhookUrls,
+      OnboardingAdminInvite,
+      OnboardingResponse,
+    ],
+  });
   SwaggerModule.setup('api', app, document);
 
   await app.init();

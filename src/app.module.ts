@@ -6,7 +6,10 @@ import { AppService } from './app.service';
 import appConfig from './config/app.config';
 import { AuthModule } from './modules/auth/auth.module';
 import { IngestModule } from './modules/ingest/ingest.module';
+import { BffModule } from './modules/bff/bff.module';
 import * as entities from './database/entities';
+import { MetricsController } from './common/observability/metrics.controller';
+import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
@@ -33,8 +36,10 @@ import * as entities from './database/entities';
     }),
     AuthModule,
     IngestModule,
+    BffModule,
+    CommonModule,
   ],
-  controllers: [AppController],
+  controllers: [AppController, MetricsController],
   providers: [AppService],
 })
 export class AppModule {}

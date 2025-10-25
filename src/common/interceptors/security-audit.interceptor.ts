@@ -15,6 +15,7 @@ export class SecurityAuditInterceptor implements NestInterceptor {
   intercept(context: ExecutionContext, next: CallHandler): Observable<any> {
     const request = context.switchToHttp().getRequest();
     const { method, url } = request;
+    const requestId = request.requestId;
     
     const apiKey = request.headers['x-api-key'];
     const organizationId = request.organizationId;
@@ -24,6 +25,7 @@ export class SecurityAuditInterceptor implements NestInterceptor {
 
     this.logger.log({
       type: 'API_REQUEST',
+      requestId,
       method,
       url,
       organizationId,
@@ -44,6 +46,7 @@ export class SecurityAuditInterceptor implements NestInterceptor {
           
           this.logger.log({
             type: 'API_SUCCESS',
+            requestId,
             method,
             url,
             organizationId,
@@ -57,6 +60,7 @@ export class SecurityAuditInterceptor implements NestInterceptor {
           
           this.logger.error({
             type: 'API_ERROR',
+            requestId,
             method,
             url,
             organizationId,
@@ -138,6 +142,7 @@ export class SecurityAuditInterceptor implements NestInterceptor {
       if (pattern.test(body) || pattern.test(url)) {
         this.logger.error({
           type: 'SECURITY_ALERT',
+          requestId: request.requestId,
           violation: 'SUSPICIOUS_PATTERN_DETECTED',
           pattern: pattern.source,
           patternIndex: index,

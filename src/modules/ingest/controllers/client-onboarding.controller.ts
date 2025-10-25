@@ -1,17 +1,38 @@
 import { Controller, Post, Body } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiResponse, ApiBody, ApiExtraModels, getSchemaPath } from '@nestjs/swagger';
+import { ErrorResponse } from '../../../common/swagger/errors';
+import { OnboardingResponse } from '../../../common/swagger/success';
 import { ClientOnboardingService, ClientOnboardingData, OnboardingResult } from '../services/client-onboarding.service';
+import { IsArray, ArrayMinSize, IsEmail, IsIn, IsOptional, IsString } from 'class-validator';
 
 class OnboardClientDto {
+  @IsString()
   clientName: string;
+
+  @IsString()
   businessType: string;
+
+  @IsOptional()
+  @IsString()
   phone?: string;
+
+  @IsOptional()
+  @IsEmail()
   email?: string;
+
+  @IsArray()
+  @ArrayMinSize(1)
+  @IsString({ each: true })
+  @IsIn(['whatsapp', 'instagram', 'telegram'], { each: true })
   channels: string[];
+
+  @IsString()
+  @IsIn(['evolution', 'n8n', 'meta_business'])
   botPlatform: string;
 }
 
 @ApiTags('Client Onboarding')
+@ApiExtraModels(ErrorResponse)
 @Controller('admin/onboarding')
 export class ClientOnboardingController {
   constructor(
@@ -31,24 +52,14 @@ export class ClientOnboardingController {
     ⚠️ A API Key só é mostrada UMA VEZ!
     `
   })
-  @ApiResponse({ 
-    status: 201, 
-    description: 'Cliente configurado com sucesso',
-    schema: {
-      example: {
-        organizationId: 123456,
-        apiKey: "bridge_123456_1729600000000_prod",
-        hmacSecret: "bridge_hmac_123456_1729600000000_abc",
-        setupInstructions: "# Instruções detalhadas...",
-        webhookUrls: {
-          leadUpsert: "https://api.seudominio.com/ingest/lead-upsert",
-          leadAttribute: "https://api.seudominio.com/ingest/lead-attribute",
-          message: "https://api.seudominio.com/ingest/message"
-        },
-        testCommands: ["curl -X POST ..."]
-      }
-    }
+  @ApiBody({
+    description: 'Dados do novo cliente e plataforma/bot usado',
+    schema: { example: { clientName: 'Salão da Maria', businessType: 'Salão de Beleza', phone: '+5511999888777', email: 'contato@salaodamaria.com', channels: ['whatsapp','instagram'], botPlatform: 'evolution' } }
   })
+  @ApiResponse({ status: 201, description: 'Cliente configurado com sucesso', schema: { $ref: getSchemaPath(OnboardingResponse) } })
+  @ApiResponse({ status: 401, description: 'Unauthorized', schema: { $ref: getSchemaPath(ErrorResponse) } })
+  @ApiResponse({ status: 403, description: 'Forbidden', schema: { $ref: getSchemaPath(ErrorResponse) } })
+  @ApiResponse({ status: 400, description: 'Bad Request: validação dos dados' })
   async onboardNewClient(
     @Body() clientData: OnboardClientDto
   ): Promise<OnboardingResult> {

@@ -7,7 +7,9 @@ export class AddHmacSecretToApiKeys1729544000000 implements MigrationInterface {
     // Add hmac_secret column to api_keys table
     await queryRunner.query(`
       ALTER TABLE "api_keys" 
-      ADD COLUMN "hmac_secret" character varying(255)
+      ADD COLUMN "hmac_secret" character varying(255)      API Key: bridge_1_1761091809355_dev
+      Organization ID: 1
+      HMAC Secret: bridge_hmac_1_1761091809355_z6y4c8
     `);
 
     // Generate unique HMAC secrets for existing API keys
