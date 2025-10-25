@@ -3,6 +3,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from '../dist/app.module';
 import { INestApplication } from '@nestjs/common';
+import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 
 let app: INestApplication;
 
@@ -38,6 +39,30 @@ async function createNestApp() {
       forbidNonWhitelisted: true,
     }),
   );
+
+  const config = new DocumentBuilder()
+    .setTitle('Bridge API')
+    .setDescription('Bridge API - Sistema de Ingestão de Leads')
+    .setVersion('1.0')
+    .addBearerAuth(
+      {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+        description: 'JWT de acesso para endpoints do BFF/Admin',
+      },
+      'BearerAuth',
+    )
+    .addApiKey({
+      type: 'apiKey',
+      name: 'x-api-key',
+      in: 'header',
+      description: 'Organization API Key for bot authentication',
+    })
+    .build();
+
+  const document = SwaggerModule.createDocument(app, config);
+  SwaggerModule.setup('api', app, document);
 
   await app.init();
   console.log('✅ NestJS app initialized');
