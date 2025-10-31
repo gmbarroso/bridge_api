@@ -10,7 +10,7 @@ interface JwtPayload {
   sub: number; // user_id
   orgId: number;
   suborgId?: number | null;
-  role: 'viewer' | 'agent' | 'admin';
+  role: 'viewer' | 'agent' | 'manager' | 'admin';
   email: string;
 }
 
@@ -64,7 +64,7 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: user.id,
       orgId: user.organization_id,
-      suborgId: user.suborganization_id,
+      suborgId: user.sub_organization_id,
       role: user.role,
       email: user.email,
     };
@@ -112,7 +112,7 @@ export class AuthService {
         email: user.email,
         role: user.role,
         organization_id: user.organization_id,
-        suborganization_id: user.suborganization_id,
+        suborganization_id: user.sub_organization_id,
       }
     };
   }

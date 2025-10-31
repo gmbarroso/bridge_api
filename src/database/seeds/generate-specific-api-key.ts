@@ -19,13 +19,14 @@ async function generateSpecificApiKey() {
     console.log('🔑 API Key já existe!');
     console.log(`API Key: ${apiKey}`);
     console.log(`Organization ID: ${organizationId}`);
+    await dataSource.destroy();
     return;
   }
 
-  await dataSource.query(`
-    INSERT INTO api_keys (organization_id, key_hash, name, status, hmac_secret)
-    VALUES ($1, $2, $3, $4, $5)
-  `, [organizationId, keyHash, 'Dev API Key - Postman', 'active', hmacSecret]);
+  await dataSource.query(
+    `INSERT INTO api_keys (organization_id, key_hash, name, hmac_secret, permissions)
+     VALUES ($1, $2, $3, $4, $5::jsonb)
+  `, [organizationId, keyHash, 'Dev API Key - Postman', hmacSecret, JSON.stringify({ scope: 'ingest' })]);
 
   console.log('🔑 API Key criada com sucesso!');
   console.log(`API Key: ${apiKey}`);

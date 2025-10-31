@@ -1,7 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { DataSource } from 'typeorm';
 import { CursorDto, LeadDetail, LeadServiceHistoryResponse, LeadTimelineResponse, ListLeadsDto, ListLeadsResponse } from '../dto/leads.dto';
-import { CacheService } from '../../../common/cache/cache.service';
 
 function normalizePhone(input?: string | null): string | undefined {
   if (!input) return undefined;
@@ -15,7 +14,7 @@ function normalizeText(input?: string | null): string | undefined {
 
 @Injectable()
 export class LeadsService {
-  constructor(private readonly dataSource: DataSource, private readonly cache: CacheService) {}
+  constructor(private readonly dataSource: DataSource) {}
 
   async list(orgId: number, dto: ListLeadsDto): Promise<ListLeadsResponse> {
     const limit = dto.limit ?? 20;
@@ -32,23 +31,23 @@ export class LeadsService {
     }
 
     const params: any[] = [orgId];
-    let where = 'luv.organization_id = $1';
+    let where = 'l.organization_id = $1';
 
     if (dto.stage) {
       params.push(dto.stage);
-      where += ` AND luv.stage = $${params.length}`;
+      where += ` AND l.stage = $${params.length}`;
     }
     if (dto.source) {
       params.push(dto.source);
-      where += ` AND luv.source = $${params.length}`;
+      where += ` AND l.source = $${params.length}`;
     }
     if (dto.dateFrom) {
       params.push(dto.dateFrom);
-      where += ` AND luv.created_at >= $${params.length}`;
+      where += ` AND l.created_at >= $${params.length}`;
     }
     if (dto.dateTo) {
       params.push(dto.dateTo);
-      where += ` AND luv.created_at <= $${params.length}`;
+      where += ` AND l.created_at <= $${params.length}`;
     }
 
     if (dto.q) {
@@ -57,40 +56,40 @@ export class LeadsService {
       const qText = normalizeText(q);
       if (qPhone) {
         params.push(qPhone);
-        where += ` AND regexp_replace(luv.phone, '[^0-9]', '', 'g') ILIKE '%' || $${params.length} || '%'`;
+        where += ` AND regexp_replace(l.phone, '[^0-9]', '', 'g') ILIKE '%' || $${params.length} || '%'`;
       } else if (qText) {
         params.push(qText);
         where += ` AND (
-          unaccent(lower(coalesce(luv.name,''))) ILIKE '%' || $${params.length} || '%'
-          OR unaccent(lower(coalesce(luv.email,''))) ILIKE '%' || $${params.length} || '%'
+          unaccent(lower(coalesce(l.name,''))) ILIKE '%' || $${params.length} || '%'
+          OR unaccent(lower(coalesce(l.email,''))) ILIKE '%' || $${params.length} || '%'
         )`;
       }
     }
 
     if (cursorCreatedAt && cursorId) {
       params.push(cursorCreatedAt, cursorId);
-      where += ` AND (luv.created_at, luv.id) < ($${params.length - 1}::timestamptz, $${params.length}::bigint)`;
+      where += ` AND (l.created_at, l.id) < ($${params.length - 1}::timestamptz, $${params.length}::bigint)`;
     }
 
     const sql = `
       SELECT
-        luv.id, luv.public_id, luv.name, luv.phone, luv.email, luv.source, luv.stage,
-        luv.created_at, luv.last_message_at, luv.servico_desejado
-      FROM lead_unified_view luv
+        l.id,
+        l.public_id,
+        l.name,
+        l.phone,
+        l.email,
+        l.source,
+        l.stage,
+        l.created_at,
+        l.last_message_at,
+        l.extra_attributes
+      FROM leads l
       WHERE ${where}
-      ORDER BY luv.created_at DESC, luv.id DESC
+      ORDER BY l.created_at DESC, l.id DESC
       LIMIT ${limit + 1}
     `;
 
-    // Cache key includes org and request fingerprint (excluding volatile fields)
-    const cacheKey = `bff:leads:list:${orgId}:${this.cache.hash({ ...dto, limit })}`;
-    const cached = await this.cache.getJSON<any[]>(cacheKey);
-    let rows: any[] = cached || [];
-    if (!cached) {
-      rows = await this.dataSource.query(sql, params);
-      // Short TTL for list results
-      await this.cache.setJSON(cacheKey, rows, 15);
-    }
+    const rows = await this.dataSource.query(sql, params);
     const hasMore = rows.length > limit;
     const page = rows.slice(0, limit);
 
@@ -102,13 +101,13 @@ export class LeadsService {
       stage: r.stage,
       createdAt: r.created_at,
       lastMessageAt: r.last_message_at,
-      servico_desejado: r.servico_desejado,
+      servico_desejado: (r.extra_attributes || {})?.servico_desejado ?? null,
     }));
 
     let nextCursor: string | null = null;
     if (hasMore) {
       const last = rows[limit - 1];
-      nextCursor = Buffer.from(`${last.created_at}|${last.id}`, 'utf8').toString('base64');
+      nextCursor = Buffer.from(`${last.sent_at}|${last.id}`, 'utf8').toString('base64');
     }
 
     return { items, nextCursor };
@@ -117,36 +116,34 @@ export class LeadsService {
   async detail(orgId: number, leadPublicId: string): Promise<LeadDetail | null> {
     const sql = `
       SELECT
-        luv.id,
-        luv.public_id,
-        luv.name,
-        luv.phone,
-        luv.email,
-        luv.source,
-        luv.stage,
-        luv.created_at,
-        luv.last_message_at,
-        luv.servico_desejado,
-        luv.bairro,
-        luv.plano_fidelidade,
+        l.id,
+        l.public_id,
+        l.name,
+        l.phone,
+        l.email,
+        l.source,
+        l.stage,
+        l.created_at,
+        l.last_message_at,
+        l.extra_attributes,
         (
           SELECT COUNT(1)
-          FROM conversations c
-          WHERE c.organization_id = luv.organization_id AND c.lead_id = luv.id
-        ) AS total_conversations,
+          FROM chats c
+          WHERE c.organization_id = l.organization_id AND c.lead_id = l.id
+        ) AS total_chats,
         (
           SELECT COUNT(1)
-          FROM messages m
-          JOIN conversations c2 ON c2.id = m.conversation_id
-          WHERE m.organization_id = luv.organization_id AND c2.lead_id = luv.id
+          FROM chat_messages m
+          WHERE m.organization_id = l.organization_id AND m.lead_id = l.id
         ) AS total_messages
-      FROM lead_unified_view luv
-      WHERE luv.organization_id = $1 AND luv.public_id = $2
+      FROM leads l
+      WHERE l.organization_id = $1 AND l.public_id = $2
       LIMIT 1
     `;
     const rows: any[] = await this.dataSource.query(sql, [orgId, leadPublicId]);
     const r = rows[0];
     if (!r) return null;
+    const extras: Record<string, any> = r.extra_attributes || {};
     // Fetch all service links for this lead (most recent first)
     const linksSql = `
       SELECT s.slug, s.title, lsl.relation, lsl.ts
@@ -165,7 +162,7 @@ export class LeadsService {
       stage: r.stage,
       createdAt: r.created_at,
       lastMessageAt: r.last_message_at,
-      desiredService: r.servico_desejado,
+      desiredService: extras.servico_desejado ?? null,
       serviceLinks: linkRows.map((lr) => ({
         slug: lr.slug,
         title: lr.title ?? null,
@@ -173,12 +170,12 @@ export class LeadsService {
         ts: lr.ts,
       })),
       attributes: {
-        servico_desejado: r.servico_desejado,
-        bairro: r.bairro,
-        plano_fidelidade: r.plano_fidelidade,
+        servico_desejado: extras.servico_desejado ?? null,
+        bairro: extras.bairro ?? null,
+        plano_fidelidade: extras.plano_fidelidade ?? null,
       },
       totals: {
-        conversations: Number(r.total_conversations || 0),
+        conversations: Number(r.total_chats || 0),
         messages: Number(r.total_messages || 0),
       },
     };
@@ -206,22 +203,22 @@ export class LeadsService {
 
     if (cursorCreatedAt && cursorId) {
       params.push(cursorCreatedAt, cursorId);
-      where += ` AND (m.created_at, m.id) < ($${params.length - 1}::timestamptz, $${params.length}::bigint)`;
+      where += ` AND (m.sent_at, m.id) < ($${params.length - 1}::timestamptz, $${params.length}::bigint)`;
     }
 
     const sql = `
       SELECT
         m.id,
         m.public_id,
-        m.created_at,
+        m.sent_at,
         m.direction,
-        m.type,
+        m.message_type,
         m.payload,
-        c.public_id AS conversation_public_id
-      FROM messages m
-      JOIN conversations c ON c.id = m.conversation_id
+        c.public_id AS chat_public_id
+      FROM chat_messages m
+      JOIN chats c ON c.id = m.chat_id
       WHERE ${where}
-      ORDER BY m.created_at DESC, m.id DESC
+      ORDER BY m.sent_at DESC, m.id DESC
       LIMIT ${limit + 1}
     `;
 
@@ -232,11 +229,11 @@ export class LeadsService {
     const items = page.map((r) => ({
       kind: 'message' as const,
       id: r.public_id,
-      createdAt: r.created_at,
+      createdAt: r.sent_at,
       direction: r.direction,
-      type: r.type,
+      type: r.message_type,
       snippet: r.payload?.text || r.payload?.caption || null,
-      conversationId: r.conversation_public_id,
+      conversationId: r.chat_public_id,
     }));
 
     let nextCursor: string | null = null;
@@ -263,26 +260,26 @@ export class LeadsService {
     }
 
     const params: any[] = [orgId, conversationPublicId];
-    let where = `m.organization_id = $1 AND m.conversation_id = (
-      SELECT id FROM conversations WHERE organization_id = $1 AND public_id = $2
+    let where = `m.organization_id = $1 AND m.chat_id = (
+      SELECT id FROM chats WHERE organization_id = $1 AND public_id = $2
     )`;
 
     if (cursorCreatedAt && cursorId) {
       params.push(cursorCreatedAt, cursorId);
-      where += ` AND (m.created_at, m.id) < ($${params.length - 1}::timestamptz, $${params.length}::bigint)`;
+      where += ` AND (m.sent_at, m.id) < ($${params.length - 1}::timestamptz, $${params.length}::bigint)`;
     }
 
     const sql = `
       SELECT
         m.id,
         m.public_id,
-        m.created_at,
+        m.sent_at,
         m.direction,
-        m.type,
+        m.message_type,
         m.payload
-      FROM messages m
+      FROM chat_messages m
       WHERE ${where}
-      ORDER BY m.created_at DESC, m.id DESC
+      ORDER BY m.sent_at DESC, m.id DESC
       LIMIT ${limit + 1}
     `;
     const rows: any[] = await this.dataSource.query(sql, params);
@@ -292,9 +289,9 @@ export class LeadsService {
     const items = page.map((r) => ({
       kind: 'message' as const,
       id: r.public_id,
-      createdAt: r.created_at,
+      createdAt: r.sent_at,
       direction: r.direction,
-      type: r.type,
+      type: r.message_type,
       snippet: r.payload?.text || r.payload?.caption || null,
       conversationId: conversationPublicId,
     }));
@@ -302,7 +299,7 @@ export class LeadsService {
     let nextCursor: string | null = null;
     if (hasMore) {
       const last = rows[limit - 1];
-      nextCursor = Buffer.from(`${last.created_at}|${last.id}`, 'utf8').toString('base64');
+      nextCursor = Buffer.from(`${last.sent_at}|${last.id}`, 'utf8').toString('base64');
     }
 
     return { items, nextCursor };

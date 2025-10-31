@@ -1,6 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { IsNull, Repository } from 'typeorm';
 import { createHash } from 'crypto';
 import { ApiKey } from '../../database/entities/api-key.entity';
 
@@ -26,7 +26,7 @@ export class ApiKeyService {
     const apiKeyEntity = await this.apiKeyRepository.findOne({
       where: {
         key_hash: keyHash,
-        status: 'active',
+        revoked_at: IsNull(),
       },
     });
 
@@ -51,7 +51,7 @@ export class ApiKeyService {
     const apiKeyEntity = await this.apiKeyRepository.findOne({
       where: {
         key_hash: keyHash,
-        status: 'active',
+        revoked_at: IsNull(),
       },
     });
 
@@ -71,7 +71,7 @@ export class ApiKeyService {
       key_hash: keyHash,
       hmac_secret: hmacSecret,
       name: name || `API Key ${new Date().toISOString()}`,
-      status: 'active',
+      permissions: {},
     });
 
     await this.apiKeyRepository.save(apiKeyEntity);
@@ -106,7 +106,7 @@ export class ApiKeyService {
   async revokeApiKey(publicId: string, organizationId: number): Promise<void> {
     const result = await this.apiKeyRepository.update(
       { public_id: publicId, organization_id: organizationId },
-      { status: 'revoked', rotated_at: new Date() },
+      { revoked_at: new Date() },
     );
 
     if (result.affected === 0) {

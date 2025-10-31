@@ -10,11 +10,12 @@ async function generateDevApiKey() {
   const keyHash = createHash('sha256').update(apiKey).digest('hex');
   const hmacSecret = `bridge_hmac_${organizationId}_${Date.now()}_${Math.random().toString(36).substring(7)}`;
 
-  await dataSource.query(`
-    INSERT INTO api_keys (organization_id, key_hash, name, status, hmac_secret)
-    VALUES ($1, $2, $3, $4, $5)
-    ON CONFLICT (key_hash) DO NOTHING
-  `, [organizationId, keyHash, 'Development API Key', 'active', hmacSecret]);
+  await dataSource.query(
+    `INSERT INTO api_keys (organization_id, key_hash, name, hmac_secret, permissions)
+     VALUES ($1, $2, $3, $4, $5::jsonb)
+     ON CONFLICT (key_hash) DO NOTHING`,
+    [organizationId, keyHash, 'Development API Key', hmacSecret, JSON.stringify({ scope: 'ingest' })]
+  );
 
   console.log('🔑 Development API Key generated:');
   console.log(`API Key: ${apiKey}`);

@@ -29,7 +29,7 @@ export class MessageDto {
   })
   @IsString()
   @IsIn(['in', 'out'], { message: 'direction must be either "in" or "out"' })
-  direction: string;
+  direction: 'in' | 'out';
 
   @ApiProperty({
     description: 'Message type',

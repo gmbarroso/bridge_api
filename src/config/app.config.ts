@@ -11,11 +11,6 @@ export default () => ({
       ? { rejectUnauthorized: false } 
       : false,
   },
-  redis: {
-    url: process.env.REDIS_URL || '',
-    enabled: process.env.REDIS_URL ? true : false,
-    defaultTtlSeconds: parseInt(process.env.REDIS_DEFAULT_TTL || '30', 10),
-  },
   security: {
     hmacEnabled: process.env.HMAC_ENABLED === 'true',
     hmacTimeWindow: parseInt(process.env.HMAC_TIME_WINDOW || '300', 10),

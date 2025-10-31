@@ -4,7 +4,6 @@ import {
   ExecutionContext,
   HttpException,
   HttpStatus,
-  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
@@ -16,7 +15,6 @@ interface RateLimitWindow {
 
 @Injectable()
 export class RateLimitGuard implements CanActivate {
-  private readonly logger = new Logger(RateLimitGuard.name);
   private readonly requestWindows = new Map<string, RateLimitWindow>();
   private readonly maxRequests: number;
   private readonly windowMs: number;
@@ -59,10 +57,6 @@ export class RateLimitGuard implements CanActivate {
     // Check if rate limit is exceeded
     if (window.requests.length >= this.maxRequests) {
       const resetTime = Math.ceil((window.requests[0] + this.windowMs) / 1000);
-      
-      this.logger.warn(
-        `Rate limit exceeded for API Key: ${apiKey.substring(0, 10)}... (${window.requests.length}/${this.maxRequests} requests)`
-      );
 
       throw new HttpException(
         {
@@ -81,9 +75,6 @@ export class RateLimitGuard implements CanActivate {
 
     // Log rate limiting info (for monitoring)
     const remaining = this.maxRequests - window.requests.length;
-    this.logger.debug(
-      `Rate limit check for API Key ${apiKey.substring(0, 10)}...: ${window.requests.length}/${this.maxRequests} requests, ${remaining} remaining`
-    );
 
     // Add rate limit headers to response
     const response = context.switchToHttp().getResponse();
@@ -114,12 +105,7 @@ export class RateLimitGuard implements CanActivate {
 
     expiredKeys.forEach(key => {
       this.requestWindows.delete(key);
-      this.logger.debug(`Cleaned up expired rate limit window for API Key: ${key.substring(0, 10)}...`);
     });
-
-    if (expiredKeys.length > 0) {
-      this.logger.log(`Cleaned up ${expiredKeys.length} expired rate limit windows`);
-    }
   }
 
   /**

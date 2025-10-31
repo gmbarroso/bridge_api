@@ -5,7 +5,6 @@ import {
   UseGuards,
   HttpCode,
   HttpStatus,
-  Logger,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -47,8 +46,6 @@ import { ErrorResponse } from '../../../common/swagger/errors';
   required: false,
 })
 export class IngestController {
-  private readonly logger = new Logger(IngestController.name);
-
   constructor(private readonly ingestService: IngestService) {}
 
   @Post('lead-upsert')
@@ -86,10 +83,6 @@ export class IngestController {
     @OrganizationId() organizationId: number,
     @Body() dto: LeadUpsertDto,
   ): Promise<LeadUpsertResponseDto> {
-    this.logger.log(
-      `Upserting lead for org ${organizationId}, phone: ${dto.phone}`,
-    );
-
     return this.ingestService.upsertLead(organizationId, dto);
   }
 
@@ -119,10 +112,6 @@ export class IngestController {
     @OrganizationId() organizationId: number,
     @Body() dto: LeadAttributeDto,
   ): Promise<void> {
-    this.logger.log(
-      `Adding attribute ${dto.key} for org ${organizationId}, lead: ${dto.lead_public_id || dto.lead_id}`,
-    );
-
     await this.ingestService.addLeadAttribute(organizationId, dto);
   }
 
@@ -152,10 +141,6 @@ export class IngestController {
     @OrganizationId() organizationId: number,
     @Body() dto: MessageDto,
   ): Promise<void> {
-    this.logger.log(
-      `Adding ${dto.direction} message (${dto.type}) for org ${organizationId}, lead: ${dto.lead_public_id || dto.lead_id}`,
-    );
-
     await this.ingestService.addMessage(organizationId, dto);
   }
 

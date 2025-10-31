@@ -9,27 +9,29 @@ import {
 
 @Entity('api_keys')
 @Index(['organization_id'])
+@Index(['public_id'], { unique: true })
+@Index(['key_hash'], { unique: true })
 export class ApiKey {
   @PrimaryGeneratedColumn('increment', { type: 'bigint' })
   id: number;
 
-  @Column({ type: 'uuid', generated: 'uuid' })
+  @Column({ type: 'uuid', default: () => 'uuid_generate_v4()' })
   public_id: string;
 
   @Column({ type: 'bigint' })
   organization_id: number;
 
-  @Column({ type: 'varchar', length: 255, unique: true })
-  key_hash: string;
-
-  @Column({ type: 'varchar', length: 255 })
-  hmac_secret: string;
-
-  @Column({ type: 'varchar', length: 100, nullable: true })
+  @Column({ type: 'text' })
   name: string;
 
-  @Column({ type: 'varchar', length: 20, default: 'active' })
-  status: string; // 'active' | 'inactive' | 'revoked'
+  @Column({ type: 'text' })
+  key_hash: string;
+
+  @Column({ type: 'text', nullable: true })
+  hmac_secret: string | null;
+
+  @Column({ type: 'jsonb', default: () => "'{}'::jsonb" })
+  permissions: Record<string, any>;
 
   @CreateDateColumn({ type: 'timestamptz' })
   created_at: Date;
@@ -38,8 +40,8 @@ export class ApiKey {
   updated_at: Date;
 
   @Column({ type: 'timestamptz', nullable: true })
-  rotated_at: Date;
+  revoked_at: Date | null;
 
   @Column({ type: 'timestamptz', nullable: true })
-  last_used_at: Date;
+  last_used_at: Date | null;
 }

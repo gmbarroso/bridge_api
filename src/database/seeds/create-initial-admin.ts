@@ -27,21 +27,26 @@ async function main() {
   const orgRepo = dataSource.getRepository(Organization);
   const userRepo = dataSource.getRepository(User);
 
-  // Upsert organization by name
-  let org = await orgRepo.findOne({ where: { name: orgName } });
+  const slugBase = orgName
+    .normalize('NFKD')
+    .replace(/[^\w\s-]/g, '')
+    .trim()
+    .replace(/[\s_-]+/g, '-')
+    .toLowerCase();
+
+  let org = await orgRepo.findOne({ where: { slug: slugBase } });
   if (!org) {
-    // Defensive: ensure sequence is aligned to MAX(id) before inserting
-    await dataSource.query(`
-      SELECT setval(
-        pg_get_serial_sequence('organizations','id'),
-        COALESCE((SELECT MAX(id) FROM organizations), 0),
-        true
-      )
-    `);
-    org = await orgRepo.save({ name: orgName } as Partial<Organization>);
-    console.log(`Created organization: ${orgName} (id=${org.id})`);
+    org = orgRepo.create({
+      name: orgName,
+      slug: slugBase,
+      type: 'internal',
+      is_active: true,
+      metadata: {},
+    });
+    org = await orgRepo.save(org);
+    console.log(`Created organization: ${orgName} (id=${org.id}, slug=${org.slug})`);
   } else {
-    console.log(`Using existing organization: ${orgName} (id=${org.id})`);
+    console.log(`Using existing organization: ${orgName} (id=${org.id}, slug=${org.slug})`);
   }
 
   // Upsert user by email
@@ -58,6 +63,7 @@ async function main() {
       email_verified_at: new Date(),
       organization_id: org.id,
       role: 'admin',
+      is_active: true,
     });
     user = await userRepo.save(user);
     console.log(`Created admin user: ${email} (id=${user.id})`);
@@ -68,6 +74,7 @@ async function main() {
     user.email_verified_at = user.email_verified_at || new Date();
     user.organization_id = org.id;
     user.role = 'admin';
+    user.is_active = true;
     await userRepo.save(user);
     console.log(`Updated existing user to admin and verified: ${email} (id=${user.id})`);
   }

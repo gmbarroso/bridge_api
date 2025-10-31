@@ -19,8 +19,8 @@ async function run() {
 
   await dataSource.query(
     `INSERT INTO services (
-      organization_id, suborganization_id, slug, title, category, audience, service_type, tags, source_url, content, status
-    ) VALUES ($1, NULL, $2, $3, $4, $5, $6, $7, NULL, $8, 'active')`,
+      organization_id, sub_organization_id, slug, title, category, audience, service_type, tags, source_url, content, status
+    ) VALUES ($1, NULL, $2, $3, $4, $5, $6, $7::jsonb, NULL, $8, 'active')`,
     [
       organizationId,
       slug,

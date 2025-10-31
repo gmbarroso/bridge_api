@@ -4,12 +4,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import appConfig from './config/app.config';
+import * as entities from './database/entities';
 import { AuthModule } from './modules/auth/auth.module';
 import { IngestModule } from './modules/ingest/ingest.module';
 import { BffModule } from './modules/bff/bff.module';
-import * as entities from './database/entities';
-import { MetricsController } from './common/observability/metrics.controller';
-import { CommonModule } from './common/common.module';
 
 @Module({
   imports: [
@@ -37,9 +35,8 @@ import { CommonModule } from './common/common.module';
     AuthModule,
     IngestModule,
     BffModule,
-    CommonModule,
   ],
-  controllers: [AppController, MetricsController],
+  controllers: [AppController],
   providers: [AppService],
 })
 export class AppModule {}

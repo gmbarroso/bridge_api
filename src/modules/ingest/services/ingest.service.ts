@@ -1,9 +1,9 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, DataSource } from 'typeorm';
 import { Lead } from '../../../database/entities/lead.entity';
-import { Conversation } from '../../../database/entities/conversation.entity';
-import { Message } from '../../../database/entities/message.entity';
+import { Chat } from '../../../database/entities/chat.entity';
+import { ChatMessage } from '../../../database/entities/chat-message.entity';
 import { LeadAttribute } from '../../../database/entities/lead-attribute.entity';
 import { LeadUpsertDto, LeadUpsertResponseDto } from '../dto/lead-upsert.dto';
 import { LeadAttributeDto } from '../dto/lead-attribute.dto';
@@ -13,27 +13,20 @@ import { Service } from '../../../database/entities/service.entity';
 import { LeadServiceLink } from '../../../database/entities/lead-service-link.entity';
 import { LeadServiceEvent } from '../../../database/entities/lead-service-event.entity';
 import { LeadServiceDto } from '../dto/lead-service.dto';
-import { CursorDto } from '../dto/cursor.dto';
 
 @Injectable()
 export class IngestService {
-  private readonly logger = new Logger(IngestService.name);
-
   constructor(
     @InjectRepository(Lead)
     private readonly leadRepository: Repository<Lead>,
-    @InjectRepository(Conversation)
-    private readonly conversationRepository: Repository<Conversation>,
-    @InjectRepository(Message)
-    private readonly messageRepository: Repository<Message>,
     @InjectRepository(LeadAttribute)
     private readonly leadAttributeRepository: Repository<LeadAttribute>,
     @InjectRepository(Service)
     private readonly serviceRepository: Repository<Service>,
     @InjectRepository(LeadServiceLink)
     private readonly leadServiceLinkRepository: Repository<LeadServiceLink>,
-  @InjectRepository(LeadServiceEvent)
-  private readonly leadServiceEventRepository: Repository<LeadServiceEvent>,
+    @InjectRepository(LeadServiceEvent)
+    private readonly leadServiceEventRepository: Repository<LeadServiceEvent>,
     private readonly idResolverService: IdResolverService,
     private readonly dataSource: DataSource,
   ) {}
@@ -46,11 +39,11 @@ export class IngestService {
       let lead: Lead | null = null;
       let created = false;
       let updated = false;
-      let conversation: Conversation | null = null;
+      let chat: Chat | null = null;
 
       // Primeiro, tentar encontrar por app + conversation_id
       if (dto.app && dto.conversation_id) {
-        conversation = await manager.findOne(Conversation, {
+        chat = await manager.findOne(Chat, {
           where: {
             organization_id: organizationId,
             app: dto.app,
@@ -59,11 +52,8 @@ export class IngestService {
           relations: ['lead'],
         });
 
-        if (conversation) {
-          lead = conversation.lead;
-          this.logger.log(
-            `Found existing lead ${lead.id} by conversation ${dto.conversation_id}`,
-          );
+        if (chat) {
+          lead = chat.lead;
         }
       }
 
@@ -77,7 +67,6 @@ export class IngestService {
         });
 
         if (lead) {
-          this.logger.log(`Found existing lead ${lead.id} by phone ${dto.phone}`);
         }
       }
 
@@ -90,14 +79,17 @@ export class IngestService {
           email: dto.email,
           source: dto.source,
           stage: 'new',
+          first_contact_at: new Date(),
+          last_contact_at: new Date(),
         });
 
         lead = await manager.save(Lead, lead);
         created = true;
-        this.logger.log(`Created new lead ${lead.id} for phone ${dto.phone}`);
       } else {
         // Atualizar campos básicos se informados (idempotente)
-        const patch: any = {};
+        const patch: any = {
+          last_contact_at: new Date(),
+        };
         if (dto.name && dto.name !== lead.name) patch.name = dto.name;
         if (dto.email !== undefined && dto.email !== lead.email)
           patch.email = dto.email || null;
@@ -105,15 +97,12 @@ export class IngestService {
           await manager.update(Lead, lead.id, patch);
           Object.assign(lead, patch);
           updated = true;
-          this.logger.log(
-            `Updated lead ${lead.id} with patch: ${JSON.stringify(patch)}`,
-          );
         }
       }
 
       // Criar ou atualizar conversa se necessário
-      if (!conversation && (dto.app || dto.conversation_id || dto.channel)) {
-        conversation = await manager.findOne(Conversation, {
+      if (!chat && (dto.app || dto.conversation_id || dto.channel)) {
+        chat = await manager.findOne(Chat, {
           where: {
             organization_id: organizationId,
             lead_id: lead.id,
@@ -123,17 +112,18 @@ export class IngestService {
           },
         });
 
-        if (!conversation) {
-          conversation = manager.create(Conversation, {
+        if (!chat) {
+          chat = manager.create(Chat, {
             organization_id: organizationId,
             lead_id: lead.id,
+            sub_organization_id: lead.sub_organization_id ?? null,
             channel: dto.channel || dto.source,
             app: dto.app,
             conversation_id: dto.conversation_id,
+            phone: lead.phone,
           });
 
-          conversation = await manager.save(Conversation, conversation);
-          this.logger.log(`Created conversation ${conversation.id} for lead ${lead.id}`);
+          chat = await manager.save(Chat, chat);
         }
       }
 
@@ -143,7 +133,7 @@ export class IngestService {
         created,
         updated,
         stage: lead.stage,
-        conversation_public_id: conversation?.public_id,
+        conversation_public_id: chat?.public_id,
       };
     });
   }
@@ -184,16 +174,11 @@ export class IngestService {
     // Opcional: refletir atributos canônicos no lead principal
     if (dto.key === 'name' || dto.key === 'nome') {
       await this.leadRepository.update(leadId, { name: dto.value });
-      this.logger.log(`Reflected attribute name into lead ${leadId}: ${dto.value}`);
     }
     if (dto.key === 'email') {
       await this.leadRepository.update(leadId, { email: dto.value });
-      this.logger.log(`Reflected attribute email into lead ${leadId}: ${dto.value}`);
     }
 
-    this.logger.log(
-      `Added attribute ${dto.key}=${dto.value} to lead ${leadId}`,
-    );
   }
 
   /**
@@ -208,7 +193,7 @@ export class IngestService {
       );
 
       // Encontrar ou criar conversa
-      let conversation = await manager.findOne(Conversation, {
+      let chat = await manager.findOne(Chat, {
         where: {
           organization_id: organizationId,
           lead_id: lead.id,
@@ -218,54 +203,62 @@ export class IngestService {
         },
       });
 
-      if (!conversation) {
-        conversation = manager.create(Conversation, {
+      if (!chat) {
+        chat = manager.create(Chat, {
           organization_id: organizationId,
           lead_id: lead.id,
+          sub_organization_id: lead.sub_organization_id ?? null,
           channel: dto.channel || 'whatsapp',
           app: dto.app,
           conversation_id: dto.conversation_id,
+          phone: lead.phone,
         });
 
-        conversation = await manager.save(Conversation, conversation);
-        this.logger.log(`Created conversation ${conversation.id} for message`);
+        chat = await manager.save(Chat, chat);
       }
 
       // Criar mensagem
       const messageTimestamp = dto.ts ? new Date(dto.ts) : new Date();
 
-      const message = manager.create(Message, {
+      const message = manager.create(ChatMessage, {
         organization_id: organizationId,
-        conversation_id: conversation.id,
-        direction: dto.direction,
-        type: dto.type,
+        chat_id: chat.id,
+        lead_id: lead.id,
+        conversation_id: chat.conversation_id ?? null,
+        direction: dto.direction as 'in' | 'out' | 'system',
+        message_type: dto.type,
         payload: dto.payload,
-        created_at: messageTimestamp,
+        bot_message: dto.direction === 'out' ? (dto.payload?.text ?? null) : null,
+        user_message: dto.direction === 'in' ? (dto.payload?.text ?? null) : null,
+        phone: chat.phone ?? lead.phone ?? null,
+        data: dto.payload ? JSON.stringify(dto.payload) : null,
+        sent_at: messageTimestamp,
       });
 
-      await manager.save(Message, message);
+      await manager.save(ChatMessage, message);
 
       // Atualizar timestamps da conversa
-      await manager.update(Conversation, conversation.id, {
+      await manager.update(Chat, chat.id, {
         last_message_at: messageTimestamp,
       });
 
       // Atualizar timestamps do lead
       const updateData: any = {
         last_message_at: messageTimestamp,
+        last_contact_at: messageTimestamp,
       };
 
       // Se for a primeira resposta da equipe, marcar first_response_at
       if (dto.direction === 'out' && !lead.first_response_at) {
         updateData.first_response_at = messageTimestamp;
-        this.logger.log(`First response recorded for lead ${lead.id}`);
+      }
+
+      if (dto.direction === 'in' && !lead.first_contact_at) {
+        updateData.first_contact_at = messageTimestamp;
       }
 
       await manager.update(Lead, lead.id, updateData);
 
-      this.logger.log(
-        `Added ${dto.direction} message (${dto.type}) to conversation ${conversation.id}`,
-      );
     });
   }
 
@@ -319,8 +312,6 @@ export class IngestService {
       });
     }
 
-    this.logger.log(`Linked lead ${leadId} to service ${service.slug} (${relation})`);
-
     // Append a historical event into lead_service_events (append-only)
     await this.leadServiceEventRepository.save({
       organization_id: organizationId,
@@ -329,79 +320,6 @@ export class IngestService {
       relation,
       source: dto.source || 'lead_service',
     });
-    this.logger.log(`Recorded service_event for lead ${leadId}: ${service.slug}/${relation}`);
   }
 
-  /**
-   * Histórico de serviços (M2M) com paginação por cursor
-   */
-  async getLeadServiceHistory(
-    organizationId: number,
-    leadPublicId: string,
-    dto: CursorDto,
-  ): Promise<{ items: Array<{ id: string; createdAt: string; slug: string; title: string | null; relation: string; source: string | null }>; nextCursor: string | null } > {
-    const limit = dto.limit ?? 20;
-
-    let cursorTs: string | undefined;
-    let cursorId: string | undefined;
-    if (dto.cursor) {
-      try {
-        const raw = Buffer.from(dto.cursor, 'base64').toString('utf8');
-        [cursorTs, cursorId] = raw.split('|');
-      } catch {
-        // ignore invalid cursor
-      }
-    }
-
-    const params: any[] = [organizationId, leadPublicId];
-    let where = `lse.organization_id = $1 AND lse.lead_id = (SELECT id FROM leads WHERE organization_id = $1 AND public_id = $2)`;
-    if (dto.relation) {
-      params.push(dto.relation);
-      where += ` AND lse.relation = $${params.length}`;
-    }
-    if (cursorTs && cursorId) {
-      params.push(cursorTs, cursorId);
-      where += ` AND (lse.ts, lse.id) < ($${params.length - 1}::timestamptz, $${params.length}::bigint)`;
-    }
-
-    const sql = `
-      SELECT lse.id, lse.public_id, lse.ts, lse.relation, lse.source, s.slug, s.title
-      FROM lead_service_events lse
-      JOIN services s ON s.id = lse.service_id
-      WHERE ${where}
-      ORDER BY lse.ts DESC, lse.id DESC
-      LIMIT ${limit + 1}
-    `;
-    const rows: any[] = await this.dataSource.query(sql, params);
-    const hasMore = rows.length > limit;
-    const page = rows.slice(0, limit);
-    const items = page.map((r) => ({
-      id: r.public_id,
-      createdAt: r.ts,
-      slug: r.slug,
-      title: r.title ?? null,
-      relation: r.relation,
-      source: r.source ?? null,
-    }));
-
-    let nextCursor: string | null = null;
-    if (hasMore) {
-      const last = rows[limit - 1];
-      nextCursor = Buffer.from(`${last.ts}|${last.id}`, 'utf8').toString('base64');
-    }
-
-    return { items, nextCursor };
-  }
-
-  async getLeadConsumedServices(
-    organizationId: number,
-    leadPublicId: string,
-    dto: CursorDto,
-  ): Promise<{ items: Array<{ id: string; createdAt: string; slug: string; title: string | null; relation: string; source: string | null }>; nextCursor: string | null } > {
-    // Force relation to 'purchased'
-    return this.getLeadServiceHistory(organizationId, leadPublicId, {
-      ...dto,
-      relation: 'purchased',
-    } as CursorDto);
-  }
 }
