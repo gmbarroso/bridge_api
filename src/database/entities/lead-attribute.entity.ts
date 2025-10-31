@@ -13,6 +13,7 @@ import { Lead } from './lead.entity';
 @Index(['public_id'], { unique: true })
 @Index(['organization_id'])
 @Index(['lead_id'])
+@Index(['sub_organization_id'])
 export class LeadAttribute {
   @PrimaryGeneratedColumn('increment', { type: 'bigint' })
   id: number;
@@ -25,6 +26,9 @@ export class LeadAttribute {
 
   @Column({ type: 'bigint' })
   lead_id: number;
+
+  @Column({ type: 'bigint', nullable: true })
+  sub_organization_id: number | null;
 
   @Column({ type: 'text' })
   key: string;

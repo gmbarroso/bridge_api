@@ -3,7 +3,6 @@ import {
   CanActivate,
   ExecutionContext,
   UnauthorizedException,
-  Logger,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { Request } from 'express';
@@ -12,7 +11,6 @@ import { ApiKeyService } from '../../auth/api-key.service';
 
 @Injectable()
 export class HmacGuard implements CanActivate {
-  private readonly logger = new Logger(HmacGuard.name);
   private readonly hmacEnabled: boolean;
   private readonly timeWindow: number;
 
@@ -36,7 +34,6 @@ export class HmacGuard implements CanActivate {
     const signature = request.headers['x-signature'] as string;
 
     if (!timestamp || !signature) {
-      this.logger.warn('Missing HMAC headers (x-timestamp, x-signature)');
       throw new UnauthorizedException('HMAC headers are required when HMAC is enabled');
     }
 
@@ -46,7 +43,6 @@ export class HmacGuard implements CanActivate {
     const timeDiff = Math.abs(currentTime - requestTime) / 1000; // em segundos
 
     if (timeDiff > this.timeWindow) {
-      this.logger.warn(`Request timestamp outside time window: ${timeDiff}s`);
       throw new UnauthorizedException('Request timestamp outside allowed time window');
     }
 
@@ -54,11 +50,9 @@ export class HmacGuard implements CanActivate {
     const isValid = await this.validateHmacSignature(request, timestamp, signature);
 
     if (!isValid) {
-      this.logger.warn('Invalid HMAC signature');
       throw new UnauthorizedException('Invalid HMAC signature');
     }
 
-    this.logger.log('HMAC signature validated successfully');
     return true;
   }
 
@@ -76,7 +70,6 @@ export class HmacGuard implements CanActivate {
     // Obter secret específico da organização
     const secret = await this.apiKeyService.getHmacSecret(apiKey);
     if (!secret) {
-      this.logger.warn('HMAC secret not found for API Key');
       return false;
     }
 

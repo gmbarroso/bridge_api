@@ -2,7 +2,7 @@ import { Column, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity('services')
 @Index(['organization_id'])
-@Index(['suborganization_id'])
+@Index(['sub_organization_id'])
 @Index(['organization_id', 'slug'], { unique: true })
 export class Service {
   @PrimaryGeneratedColumn('increment', { type: 'bigint' })
@@ -15,7 +15,7 @@ export class Service {
   organization_id!: number;
 
   @Column({ type: 'bigint', nullable: true })
-  suborganization_id!: number | null;
+  sub_organization_id!: number | null;
 
   @Column({ type: 'text' })
   slug!: string;
@@ -43,6 +43,12 @@ export class Service {
 
   @Column({ type: 'text', default: 'active' })
   status!: 'active' | 'inactive';
+
+  @Column({ type: 'jsonb', default: () => "'{}'::jsonb" })
+  metadata!: Record<string, any>;
+
+  @Column({ type: 'vector', nullable: true, comment: 'pgvector column; ajustado via migrations' })
+  embedding!: number[] | null;
 
   @Column({ type: 'timestamptz', default: () => 'now()' })
   created_at!: Date;

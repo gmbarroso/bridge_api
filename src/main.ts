@@ -6,9 +6,6 @@ import {
   MessageResponse,
   TokenPairResponse,
   LoginResponse,
-  ApiKeyInfoResponse,
-  ApiKeyGenerationResponse,
-  ApiKeyUsageResponse,
   BffLeadListItem,
   BffLeadListResponse,
   BffLeadDetailTotals,
@@ -16,17 +13,13 @@ import {
   BffServiceLink,
   BffTimelineMessageItem,
   BffTimelineResponse,
-  OnboardingWebhookUrls,
-  OnboardingAdminInvite,
-  OnboardingResponse,
+  BffServiceEventItem,
+  BffServiceHistoryResponse,
 } from './common/swagger/success';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { INestApplication } from '@nestjs/common';
 import { RequestContextInterceptor } from './common/interceptors/request-context.interceptor';
-import { MetricsInterceptor } from './common/interceptors/metrics.interceptor';
-import { SecurityAuditInterceptor } from './common/interceptors/security-audit.interceptor';
-import { MetricsService } from './common/observability/metrics.service';
 
 let cachedApp: INestApplication;
 
@@ -59,12 +52,7 @@ async function createApp() {
     }),
   );
 
-  const metricsService = app.get(MetricsService);
-  app.useGlobalInterceptors(
-    new RequestContextInterceptor(),
-    new MetricsInterceptor(metricsService),
-    new SecurityAuditInterceptor(),
-  );
+  app.useGlobalInterceptors(new RequestContextInterceptor());
 
   const config = new DocumentBuilder()
     .setTitle('Bridge API')
@@ -97,9 +85,6 @@ async function createApp() {
       TokenPairResponse,
       LoginResponse,
       // API Key Management
-      ApiKeyInfoResponse,
-      ApiKeyGenerationResponse,
-      ApiKeyUsageResponse,
       // BFF
       BffLeadListItem,
       BffLeadListResponse,
@@ -108,10 +93,8 @@ async function createApp() {
       BffServiceLink,
       BffTimelineMessageItem,
       BffTimelineResponse,
-      // Onboarding
-      OnboardingWebhookUrls,
-      OnboardingAdminInvite,
-      OnboardingResponse,
+      BffServiceEventItem,
+      BffServiceHistoryResponse,
     ],
   });
   SwaggerModule.setup('api', app, document, {
