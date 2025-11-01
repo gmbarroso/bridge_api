@@ -2,11 +2,13 @@ import { ApiProperty } from '@nestjs/swagger';
 import {
   IsArray,
   IsIn,
+  IsNumber,
   IsObject,
   IsOptional,
   IsString,
   Length,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 
 export class LeadUpsertDto {
   @ApiProperty({
@@ -27,7 +29,7 @@ export class LeadUpsertDto {
   conversation_id?: string;
 
   @ApiProperty({
-    description: 'Lead type. Use "corporate" to route into corporate_leads.',
+    description: 'Lead type. Define se o registro é pessoa física (`person`) ou jurídica (`corporate`).',
     enum: ['person', 'corporate'],
     default: 'person',
     required: false,
@@ -125,6 +127,61 @@ export class LeadUpsertDto {
   @IsOptional()
   @IsString()
   servico?: string;
+
+  @ApiProperty({
+    description: 'Quantidade de colaboradores da empresa.',
+    example: 25,
+    required: false,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  colaboradores?: number;
+
+  @ApiProperty({
+    description: 'Tipo de cliente (ex.: MEI, PME, Enterprise).',
+    example: 'PME',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  tipo_cliente?: string;
+
+  @ApiProperty({
+    description: 'Cargo do contato principal.',
+    example: 'Diretor Comercial',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  cargo?: string;
+
+  @ApiProperty({
+    description: 'Nome da empresa (quando diferente de company_name).',
+    example: 'Bridge Tecnologia LTDA',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  empresa?: string;
+
+  @ApiProperty({
+    description: 'Nome agendado para o atendimento.',
+    example: 'Reunião com João Silva',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  nome_agendado?: string;
+
+  @ApiProperty({
+    description: 'CPF ou CNPJ do cliente.',
+    example: '12.345.678/0001-99',
+    required: false,
+  })
+  @IsOptional()
+  @IsString()
+  cpf_cnpj?: string;
 
   @ApiProperty({
     description: 'Custom consent flags.',

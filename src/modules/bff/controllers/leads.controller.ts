@@ -40,8 +40,18 @@ export class LeadsController {
       limit: query.limit ?? 50,
       items: result.items.map((item) => ({
         sessionId: item.sessionId,
+        name: item.name,
+        email: item.email,
+        phone: item.phone,
         stage: item.stage,
         lastMessageAt: item.lastMessageAt,
+        servico: item.servico,
+        colaboradores: item.colaboradores,
+        tipoCliente: item.tipoCliente,
+        cargo: item.cargo,
+        empresa: item.empresa,
+        nomeAgendado: item.nomeAgendado,
+        cpfCnpj: item.cpfCnpj,
       })),
     });
     const etag = 'W/"' + createHash('sha1').update(fingerprint).digest('hex') + '"';

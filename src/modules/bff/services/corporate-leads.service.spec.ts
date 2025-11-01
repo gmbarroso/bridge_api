@@ -1,12 +1,12 @@
 import { CorporateLeadsService } from './corporate-leads.service';
 import { DataSource } from 'typeorm';
-import { CorporateLead } from '../../../database/entities/corporate-lead.entity';
+import { Lead } from '../../../database/entities/lead.entity';
 import { Chat } from '../../../database/entities/chat.entity';
 
 const buildDataSource = (rows: any[]): DataSource =>
   ({
     getRepository: jest.fn((entity) => {
-      if (entity === CorporateLead) {
+      if (entity === Lead) {
         return {
           createQueryBuilder: jest.fn(() => {
             const qb: any = {
@@ -43,6 +43,12 @@ describe('CorporateLeadsService', () => {
         stage: 'new',
         created_at: createdAt,
         last_message_at: null,
+        colaboradores: 80,
+        tipo_cliente: 'Enterprise',
+        cargo: 'CEO',
+        empresa: 'Bridge Tecnologia LTDA',
+        nome_agendado: 'Kickoff',
+        cpf_cnpj: '12.345.678/0001-99',
         conversation_public_id: 'conv-corp',
       },
     ];
@@ -61,6 +67,12 @@ describe('CorporateLeadsService', () => {
       stage: 'new',
       createdAt: createdAt.toISOString(),
       lastMessageAt: null,
+      colaboradores: 80,
+      tipoCliente: 'Enterprise',
+      cargo: 'CEO',
+      empresa: 'Bridge Tecnologia LTDA',
+      nomeAgendado: 'Kickoff',
+      cpfCnpj: '12.345.678/0001-99',
       conversationPublicId: 'conv-corp',
     });
   });

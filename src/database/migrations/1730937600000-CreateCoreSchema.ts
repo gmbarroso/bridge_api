@@ -130,10 +130,18 @@ export class CreateCoreSchema1730937600000 implements MigrationInterface {
         organization_id BIGINT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
         sub_organization_id BIGINT NULL REFERENCES sub_organizations(id) ON DELETE SET NULL,
         owner_user_id BIGINT NULL REFERENCES users(id) ON DELETE SET NULL,
+        kind TEXT NOT NULL DEFAULT 'person',
         phone TEXT NULL,
         email TEXT NULL,
         name TEXT NULL,
+        company_name TEXT NULL,
         document TEXT NULL,
+        colaboradores INTEGER NULL,
+        tipo_cliente TEXT NULL,
+        cargo TEXT NULL,
+        empresa TEXT NULL,
+        nome_agendado TEXT NULL,
+        cpf_cnpj TEXT NULL,
         source TEXT NOT NULL DEFAULT 'whatsapp',
         stage TEXT NOT NULL DEFAULT 'new',
         session_id TEXT NOT NULL,
@@ -146,7 +154,7 @@ export class CreateCoreSchema1730937600000 implements MigrationInterface {
         first_response_at TIMESTAMPTZ NULL,
         created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
         updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-        "pushName" TEXT NULL,
+        pushName TEXT NULL,
         servico TEXT NULL,
         UNIQUE (public_id),
         UNIQUE (session_id)
@@ -156,36 +164,6 @@ export class CreateCoreSchema1730937600000 implements MigrationInterface {
     await queryRunner.query(`CREATE INDEX idx_leads_sub_org ON leads(sub_organization_id)`);
     await queryRunner.query(`CREATE INDEX idx_leads_stage ON leads(stage)`);
     await queryRunner.query(`CREATE INDEX idx_leads_session ON leads(session_id)`);
-
-    await queryRunner.query(`
-      CREATE TABLE corporate_leads (
-        id BIGSERIAL PRIMARY KEY,
-        public_id UUID NOT NULL DEFAULT uuid_generate_v4(),
-        organization_id BIGINT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-        sub_organization_id BIGINT NULL REFERENCES sub_organizations(id) ON DELETE SET NULL,
-        owner_user_id BIGINT NULL REFERENCES users(id) ON DELETE SET NULL,
-        phone TEXT NULL,
-        email TEXT NULL,
-        company_name TEXT NULL,
-        document TEXT NULL,
-        source TEXT NOT NULL DEFAULT 'whatsapp',
-        stage TEXT NOT NULL DEFAULT 'new',
-        session_id TEXT NOT NULL,
-        consents JSONB NOT NULL DEFAULT '{}'::jsonb,
-        tags TEXT[] NOT NULL DEFAULT '{}'::text[],
-        extra_attributes JSONB NOT NULL DEFAULT '{}'::jsonb,
-        first_contact_at TIMESTAMPTZ NULL,
-        last_contact_at TIMESTAMPTZ NULL,
-        last_message_at TIMESTAMPTZ NULL,
-        first_response_at TIMESTAMPTZ NULL,
-        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-        updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-        UNIQUE (public_id),
-        UNIQUE (session_id)
-      )
-    `);
-    await queryRunner.query(`CREATE INDEX idx_corporate_leads_org ON corporate_leads(organization_id)`);
-    await queryRunner.query(`CREATE INDEX idx_corporate_leads_session ON corporate_leads(session_id)`);
 
     await queryRunner.query(`
       CREATE TABLE documents (
@@ -249,7 +227,6 @@ export class CreateCoreSchema1730937600000 implements MigrationInterface {
         organization_id BIGINT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
         sub_organization_id BIGINT NULL REFERENCES sub_organizations(id) ON DELETE SET NULL,
         lead_id BIGINT NULL REFERENCES leads(id) ON DELETE SET NULL,
-        corporate_lead_id BIGINT NULL REFERENCES corporate_leads(id) ON DELETE SET NULL,
         conversation_id TEXT NOT NULL UNIQUE,
         channel TEXT NULL,
         app TEXT NULL,
@@ -296,7 +273,6 @@ export class CreateCoreSchema1730937600000 implements MigrationInterface {
         id BIGSERIAL PRIMARY KEY,
         organization_id BIGINT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
         lead_id BIGINT NULL REFERENCES leads(id) ON DELETE SET NULL,
-        corporate_lead_id BIGINT NULL REFERENCES corporate_leads(id) ON DELETE SET NULL,
         workflow TEXT NOT NULL,
         input JSONB NULL,
         output JSONB NULL,
@@ -315,7 +291,6 @@ export class CreateCoreSchema1730937600000 implements MigrationInterface {
         organization_id BIGINT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
         sub_organization_id BIGINT NULL REFERENCES sub_organizations(id) ON DELETE SET NULL,
         lead_id BIGINT NULL REFERENCES leads(id) ON DELETE SET NULL,
-        corporate_lead_id BIGINT NULL REFERENCES corporate_leads(id) ON DELETE SET NULL,
         type TEXT NOT NULL,
         payload JSONB NOT NULL DEFAULT '{}'::jsonb,
         read_at TIMESTAMPTZ NULL,
@@ -336,7 +311,6 @@ export class CreateCoreSchema1730937600000 implements MigrationInterface {
     await queryRunner.query(`DROP TABLE IF EXISTS agenda`);
     await queryRunner.query(`DROP TABLE IF EXISTS professionals`);
     await queryRunner.query(`DROP TABLE IF EXISTS documents`);
-    await queryRunner.query(`DROP TABLE IF EXISTS corporate_leads`);
     await queryRunner.query(`DROP TABLE IF EXISTS leads`);
     await queryRunner.query(`DROP TABLE IF EXISTS user_preferences`);
     await queryRunner.query(`DROP TABLE IF EXISTS user_sessions`);

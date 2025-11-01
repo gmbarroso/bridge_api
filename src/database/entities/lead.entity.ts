@@ -17,6 +17,7 @@ import { Chat } from './chat.entity';
 @Index(['organization_id'])
 @Index(['sub_organization_id'])
 @Index(['stage'])
+@Index(['kind'])
 @Index(['session_id'], { unique: true })
 export class Lead {
   @PrimaryGeneratedColumn('increment', { type: 'bigint' })
@@ -36,19 +37,43 @@ export class Lead {
   suborganization: Suborganization | null;
 
   @Column({ type: 'text', nullable: true })
-  name: string;
+  name: string | null;
 
   @Column({ type: 'text', nullable: true })
-  phone: string;
+  company_name: string | null;
 
   @Column({ type: 'text', nullable: true })
-  email: string;
+  phone: string | null;
 
   @Column({ type: 'text', nullable: true })
-  document: string;
+  email: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  document: string | null;
+
+  @Column({ type: 'integer', nullable: true })
+  colaboradores: number | null;
+
+  @Column({ type: 'text', nullable: true })
+  tipo_cliente: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  cargo: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  empresa: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  nome_agendado: string | null;
+
+  @Column({ type: 'text', nullable: true })
+  cpf_cnpj: string | null;
 
   @Column({ type: 'text', default: 'whatsapp' })
   source: string;
+
+  @Column({ type: 'text', default: 'person' })
+  kind: 'person' | 'corporate';
 
   @Column({ type: 'text', default: 'new' })
   stage: string;

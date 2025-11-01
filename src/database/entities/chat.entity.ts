@@ -12,7 +12,6 @@ import {
 import { Suborganization } from './suborganization.entity';
 import { ChatMessage } from './chat-message.entity';
 import { Lead } from './lead.entity';
-import { CorporateLead } from './corporate-lead.entity';
 import { Organization } from './organization.entity';
 
 @Entity('chats')
@@ -45,13 +44,6 @@ export class Chat {
   @ManyToOne(() => Lead, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'lead_id' })
   lead!: Lead | null;
-
-  @Column({ type: 'bigint', nullable: true })
-  corporate_lead_id!: number | null;
-
-  @ManyToOne(() => CorporateLead, { onDelete: 'SET NULL', nullable: true })
-  @JoinColumn({ name: 'corporate_lead_id' })
-  corporate_lead!: CorporateLead | null;
 
   @Column({ type: 'text', nullable: true })
   channel!: string | null;

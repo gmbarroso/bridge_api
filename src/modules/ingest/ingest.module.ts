@@ -1,7 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { Lead } from '../../database/entities/lead.entity';
-import { CorporateLead } from '../../database/entities/corporate-lead.entity';
 import { Chat } from '../../database/entities/chat.entity';
 import { ChatMessage } from '../../database/entities/chat-message.entity';
 import { AuthModule } from '../auth/auth.module';
@@ -12,7 +11,6 @@ import { IngestService } from './services/ingest.service';
   imports: [
     TypeOrmModule.forFeature([
       Lead,
-      CorporateLead,
       Chat,
       ChatMessage,
     ]),
