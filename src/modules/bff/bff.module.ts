@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
 import { ConversationsController } from './controllers/conversations.controller';
 import { StatsController } from './controllers/stats.controller';
 import { StatsService } from './services/stats.service';
@@ -9,6 +10,7 @@ import { CorporateLeadsController } from './controllers/corporate-leads.controll
 import { CorporateLeadsService } from './services/corporate-leads.service';
 
 @Module({
+  imports: [AuthModule],
   controllers: [LeadsController, CorporateLeadsController, ConversationsController, StatsController],
   providers: [LeadsService, CorporateLeadsService, ChatsService, StatsService],
 })
