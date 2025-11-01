@@ -8,13 +8,10 @@ import {
   LoginResponse,
   BffLeadListItem,
   BffLeadListResponse,
-  BffLeadDetailTotals,
-  BffLeadDetailResponse,
-  BffServiceLink,
+  BffCorporateLeadListItem,
+  BffCorporateLeadListResponse,
   BffTimelineMessageItem,
   BffTimelineResponse,
-  BffServiceEventItem,
-  BffServiceHistoryResponse,
 } from './common/swagger/success';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
@@ -88,13 +85,10 @@ async function createApp() {
       // BFF
       BffLeadListItem,
       BffLeadListResponse,
-      BffLeadDetailTotals,
-      BffLeadDetailResponse,
-      BffServiceLink,
+      BffCorporateLeadListItem,
+      BffCorporateLeadListResponse,
       BffTimelineMessageItem,
       BffTimelineResponse,
-      BffServiceEventItem,
-      BffServiceHistoryResponse,
     ],
   });
   SwaggerModule.setup('api', app, document, {

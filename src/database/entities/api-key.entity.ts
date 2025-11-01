@@ -8,7 +8,7 @@ import {
 } from 'typeorm';
 
 @Entity('api_keys')
-@Index(['organization_id'])
+@Index(['organization_id'], { unique: true })
 @Index(['public_id'], { unique: true })
 @Index(['key_hash'], { unique: true })
 export class ApiKey {

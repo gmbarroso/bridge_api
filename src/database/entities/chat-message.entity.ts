@@ -1,20 +1,10 @@
-import {
-  Column,
-  CreateDateColumn,
-  Entity,
-  Index,
-  JoinColumn,
-  ManyToOne,
-  PrimaryGeneratedColumn,
-} from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Chat } from './chat.entity';
-import { Lead } from './lead.entity';
 
 @Entity('chat_messages')
 @Index(['public_id'], { unique: true })
-@Index(['organization_id'])
-@Index(['chat_id', 'sent_at'])
-@Index(['lead_id', 'sent_at'])
+@Index(['conversation_id'])
+@Index(['sent_at'])
 export class ChatMessage {
   @PrimaryGeneratedColumn('increment', { type: 'bigint' })
   id!: number;
@@ -22,20 +12,8 @@ export class ChatMessage {
   @Column({ type: 'uuid', default: () => 'uuid_generate_v4()' })
   public_id!: string;
 
-  @Column({ type: 'bigint' })
-  organization_id!: number;
-
-  @Column({ type: 'bigint' })
-  chat_id!: number;
-
-  @Column({ type: 'bigint', nullable: true })
-  lead_id!: number | null;
-
-  @Column({ type: 'text', nullable: true })
-  conversation_id!: string | null;
-
   @Column({ type: 'text' })
-  direction!: 'in' | 'out' | 'system';
+  conversation_id!: string;
 
   @Column({ type: 'text', default: 'text' })
   message_type!: string;
@@ -65,10 +43,6 @@ export class ChatMessage {
   created_at!: Date;
 
   @ManyToOne(() => Chat, (chat) => chat.messages, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'chat_id' })
+  @JoinColumn({ name: 'conversation_id', referencedColumnName: 'conversation_id' })
   chat!: Chat;
-
-  @ManyToOne(() => Lead, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'lead_id' })
-  lead!: Lead | null;
 }

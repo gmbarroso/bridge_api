@@ -1,28 +1,37 @@
 import { Controller, Get, Query, Req, Res, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt.guard';
 import { OrganizationId } from '../../../common/decorators/organization.decorator';
-import { LeadsService } from '../services/leads.service';
+import { CorporateLeadsService } from '../services/corporate-leads.service';
 import { ListLeadsQueryDto } from '../dto/leads.dto';
-import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiQuery, ApiResponse, ApiTags, ApiHeader, getSchemaPath } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiHeader,
+  ApiOkResponse,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+  ApiTags,
+  getSchemaPath,
+} from '@nestjs/swagger';
 import { Request, Response } from 'express';
-import { BffLeadListResponse } from '../../../common/swagger/success';
+import { BffCorporateLeadListResponse } from '../../../common/swagger/success';
 import { ErrorResponse } from '../../../common/swagger/errors';
 import { createHash } from 'crypto';
 
-@ApiTags('BFF - Leads')
+@ApiTags('BFF - Corporate Leads')
 @ApiBearerAuth('BearerAuth')
-@Controller('bff/leads')
+@Controller('bff/corporate-leads')
 @UseGuards(JwtAuthGuard)
-export class LeadsController {
-  constructor(private readonly leadsService: LeadsService) {}
+export class CorporateLeadsController {
+  constructor(private readonly service: CorporateLeadsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Lista leads da organização (baseado em session_id)' })
+  @ApiOperation({ summary: 'Lista corporate leads da organização (tabela corporate_leads)' })
   @ApiQuery({ name: 'stage', required: false, description: 'Filtro por stage' })
-  @ApiQuery({ name: 'search', required: false, description: 'Busca por nome/telefone/session_id' })
+  @ApiQuery({ name: 'search', required: false, description: 'Busca por empresa/telefone/session_id' })
   @ApiQuery({ name: 'limit', required: false, description: 'Limite de itens (1-200, padrão 50)' })
   @ApiHeader({ name: 'If-None-Match', required: false, description: 'Conditional GET com ETag' })
-  @ApiOkResponse({ schema: { $ref: getSchemaPath(BffLeadListResponse) } })
+  @ApiOkResponse({ schema: { $ref: getSchemaPath(BffCorporateLeadListResponse) } })
   @ApiResponse({ status: 304, description: 'Not Modified (ETag corresponde)' })
   @ApiResponse({ status: 400, description: 'Parâmetros inválidos', schema: { $ref: getSchemaPath(ErrorResponse) } })
   async list(
@@ -31,7 +40,7 @@ export class LeadsController {
     @Req() req: Request,
     @Res() res: Response,
   ) {
-    const result = await this.leadsService.list(orgId, query);
+    const result = await this.service.list(orgId, query);
 
     const fingerprint = JSON.stringify({
       orgId,

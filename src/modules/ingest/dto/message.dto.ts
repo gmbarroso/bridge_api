@@ -1,63 +1,69 @@
-import { IsString, IsOptional, IsUUID, IsNumber, IsObject, IsIn, IsDateString } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import {
+  IsDateString,
+  IsIn,
+  IsObject,
+  IsOptional,
+  IsString,
+  Length,
+} from 'class-validator';
 
 export class MessageDto {
   @ApiProperty({
-    description: 'Lead public UUID (preferred) or internal ID',
-    example: 'a0f9fbd5-0a0e-4f05-9b21-5a2d5f4f8a4f',
+    description: 'Conversation identifier. Falls back to session_id when omitted.',
+    example: 'session-01HZY9Q3CH9R9',
     required: false,
   })
   @IsOptional()
-  @IsUUID('4', { message: 'lead_public_id must be a valid UUID' })
-  lead_public_id?: string;
+  @IsString()
+  conversation_id?: string;
 
   @ApiProperty({
-    description: 'Lead internal ID (alternative to public_id)',
-    example: 915,
+    description: 'Session identifier (required if conversation_id is missing).',
+    example: 'session-01HZY9Q3CH9R9',
     required: false,
   })
   @IsOptional()
-  @IsNumber()
-  @Type(() => Number)
-  lead_id?: number;
+  @IsString()
+  @Length(1, 255)
+  session_id?: string;
 
   @ApiProperty({
-    description: 'Message direction',
-    example: 'in',
+    description: 'Direction of the message.',
     enum: ['in', 'out'],
+    example: 'in',
   })
-  @IsString()
-  @IsIn(['in', 'out'], { message: 'direction must be either "in" or "out"' })
-  direction: 'in' | 'out';
+  @IsIn(['in', 'out'])
+  direction!: 'in' | 'out';
 
   @ApiProperty({
-    description: 'Message type',
+    description: 'Message type (text, image, audio, etc).',
     example: 'text',
-    enum: ['text', 'image', 'doc', 'audio', 'video', 'location', 'contact'],
+    required: false,
+    default: 'text',
   })
+  @IsOptional()
   @IsString()
-  @IsIn(['text', 'image', 'doc', 'audio', 'video', 'location', 'contact'])
-  type: string;
+  type?: string;
 
   @ApiProperty({
-    description: 'Message payload/content',
-    example: { text: 'Quero cortar amanhã' },
+    description: 'Message payload (stored as JSON string).',
+    example: { text: 'Preciso de horário amanhã' },
   })
   @IsObject()
-  payload: Record<string, any>;
+  payload!: Record<string, any>;
 
   @ApiProperty({
-    description: 'Communication channel',
+    description: 'Channel (whatsapp, instagram...).',
     example: 'whatsapp',
-    default: 'whatsapp',
+    required: false,
   })
   @IsOptional()
   @IsString()
   channel?: string;
 
   @ApiProperty({
-    description: 'Application name',
+    description: 'Application name generating the message.',
     example: 'evolution',
     required: false,
   })
@@ -66,20 +72,20 @@ export class MessageDto {
   app?: string;
 
   @ApiProperty({
-    description: 'External conversation ID',
-    example: 'abc-123',
+    description: 'Phone associated with the message.',
+    example: '+5521999999999',
     required: false,
   })
   @IsOptional()
   @IsString()
-  conversation_id?: string;
+  phone?: string;
 
   @ApiProperty({
-    description: 'Message timestamp (ISO 8601)',
-    example: '2025-10-21T18:05:00Z',
+    description: 'Message timestamp (ISO 8601). Defaults to now.',
+    example: '2025-10-31T01:06:00Z',
     required: false,
   })
   @IsOptional()
-  @IsDateString({}, { message: 'ts must be a valid ISO 8601 date string' })
+  @IsDateString()
   ts?: string;
 }

@@ -6,11 +6,13 @@ import { User } from '../../database/entities/user.entity';
 import { RefreshToken } from '../../database/entities/refresh-token.entity';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
+import { UserSession } from '../../database/entities/user-session.entity';
+import { JwtAuthGuard } from './guards/jwt.guard';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([ApiKey, User, RefreshToken])],
-  providers: [ApiKeyService, AuthService],
+  imports: [TypeOrmModule.forFeature([ApiKey, User, RefreshToken, UserSession])],
+  providers: [ApiKeyService, AuthService, JwtAuthGuard],
   controllers: [AuthController],
-  exports: [ApiKeyService, AuthService],
+  exports: [ApiKeyService, AuthService, JwtAuthGuard],
 })
 export class AuthModule {}

@@ -1,120 +1,35 @@
-import { IsDateString, IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { Type } from 'class-transformer';
 
-export class ListLeadsDto {
+export class ListLeadsQueryDto {
+  @ApiProperty({
+    description: 'Filter by stage (optional)',
+    example: 'new',
+    required: false,
+  })
   @IsOptional()
   @IsString()
   stage?: string;
 
+  @ApiProperty({
+    description: 'Text search (matches name, phone or session_id)',
+    example: 'joao',
+    required: false,
+  })
   @IsOptional()
   @IsString()
-  source?: string;
+  search?: string;
 
+  @ApiProperty({
+    description: 'Maximum number of items (default 50, max 200)',
+    example: 50,
+    required: false,
+  })
   @IsOptional()
-  @IsString()
-  q?: string;
-
-  @IsOptional()
-  @IsDateString()
-  dateFrom?: string;
-
-  @IsOptional()
-  @IsDateString()
-  dateTo?: string;
-
-  @IsOptional()
-  @IsString()
-  cursor?: string; // base64(created_at|id)
-
-  @IsOptional()
+  @Type(() => Number)
   @IsInt()
   @Min(1)
-  @Max(100)
-  limit?: number = 20;
+  @Max(200)
+  limit?: number;
 }
-
-export type LeadListItem = {
-  id: string; // public_id
-  name: string | null;
-  phone: string | null;
-  source: string | null;
-  stage: string;
-  createdAt: string;
-  lastMessageAt: string | null;
-  // Enriched from lead_unified_view when available
-  servico_desejado?: string | null;
-  firstResponseSlaMin?: number | null;
-  totalMessages?: number | null;
-  lastMessageSnippet?: string | null;
-};
-
-export type ListLeadsResponse = {
-  items: LeadListItem[];
-  nextCursor?: string | null;
-};
-
-export class CursorDto {
-  @IsOptional()
-  @IsString()
-  cursor?: string; // base64(created_at|id)
-
-  @IsOptional()
-  @IsInt()
-  @Min(1)
-  @Max(100)
-  limit?: number = 20;
-}
-
-export type LeadDetail = {
-  id: string; // public_id
-  name: string | null;
-  phone: string | null;
-  email: string | null;
-  source: string | null;
-  stage: string;
-  createdAt: string;
-  lastMessageAt: string | null;
-  // Convenience top-level field for UI usage (also present in attributes)
-  desiredService?: string | null;
-  // All linked services for this lead (most recent first)
-  serviceLinks?: Array<{
-    slug: string;
-    title: string | null;
-    relation: string;
-    ts: string;
-  }>;
-  attributes?: Record<string, string | null>;
-  totals?: {
-    conversations: number;
-    messages: number;
-  };
-};
-
-export type LeadTimelineItem = {
-  kind: 'message';
-  id: string; // public_id
-  createdAt: string;
-  direction: 'in' | 'out';
-  type: string;
-  snippet?: string | null;
-  conversationId: string; // conversation public_id
-};
-
-export type LeadTimelineResponse = {
-  items: LeadTimelineItem[];
-  nextCursor?: string | null;
-};
-
-export type LeadServiceEventItem = {
-  kind: 'service_event';
-  id: string; // public_id
-  createdAt: string;
-  slug: string;
-  title: string | null;
-  relation: 'interested' | 'desired' | 'purchased' | 'recommended';
-  source: string | null;
-};
-
-export type LeadServiceHistoryResponse = {
-  items: LeadServiceEventItem[];
-  nextCursor?: string | null;
-};
