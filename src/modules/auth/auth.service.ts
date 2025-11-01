@@ -1,10 +1,11 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as argon2 from 'argon2';
 import { sign, verify, SignOptions } from 'jsonwebtoken';
 import { User } from '../../database/entities/user.entity';
 import { RefreshToken } from '../../database/entities/refresh-token.entity';
+import { UserSession } from '../../database/entities/user-session.entity';
 
 interface JwtPayload {
   sub: number; // user_id
@@ -19,6 +20,7 @@ export class AuthService {
   constructor(
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     @InjectRepository(RefreshToken) private readonly refreshRepo: Repository<RefreshToken>,
+    @InjectRepository(UserSession) private readonly userSessionRepo: Repository<UserSession>,
   ) {}
 
   private getAccessSecret() {
@@ -60,6 +62,44 @@ export class AuthService {
     return days * 24 * 60 * 60 * 1000;
   }
 
+  private getRefreshExpiresAt() {
+    return new Date(Date.now() + this.getRefreshTtlMs());
+  }
+
+  private buildDeviceMetadata(meta?: { userAgent?: string | null; ip?: string | null }) {
+    const deviceMetadata: Record<string, any> = {};
+    if (meta?.userAgent) {
+      deviceMetadata.userAgent = meta.userAgent;
+    }
+    if (meta?.ip) {
+      deviceMetadata.ip = meta.ip;
+    }
+    return deviceMetadata;
+  }
+
+  private async persistSession(
+    user: User,
+    tokenRow: RefreshToken,
+    meta?: { userAgent?: string | null; ip?: string | null },
+  ) {
+    const session = this.userSessionRepo.create({
+      user_id: user.id,
+      organization_id: user.organization_id,
+      refresh_token_hash: tokenRow.token_hash,
+      expires_at: this.getRefreshExpiresAt(),
+      remember_me: false,
+      device_metadata: this.buildDeviceMetadata(meta),
+    });
+    await this.userSessionRepo.save(session);
+  }
+
+  private async expireSessionsByHash(hash: string) {
+    await this.userSessionRepo.update(
+      { refresh_token_hash: hash },
+      { expires_at: new Date() },
+    );
+  }
+
   private signAccessToken(user: User): string {
     const payload: JwtPayload = {
       sub: user.id,
@@ -85,6 +125,7 @@ export class AuthService {
       replaced_by_token_id: null,
       revoked_at: null,
     });
+    await this.persistSession(user, saved, meta);
     return { refreshToken: raw, tokenRow: saved };
   }
 
@@ -95,6 +136,14 @@ export class AuthService {
 
     const ok = await argon2.verify(user.password_hash, password);
     if (!ok) throw new UnauthorizedException('Credenciais inválidas');
+
+    if (!user.is_active) {
+      throw new UnauthorizedException('Usuário inativo');
+    }
+
+    if (!user.organization_id) {
+      throw new UnauthorizedException('Usuário sem organização');
+    }
 
     if (!user.email_verified_at) {
       throw new UnauthorizedException('Email não verificado');
@@ -153,6 +202,7 @@ export class AuthService {
     const newPair = await this.issueRefreshToken(user, meta);
     tokenRow.replaced_by_token_id = newPair.tokenRow.id;
     await this.refreshRepo.save(tokenRow);
+    await this.expireSessionsByHash(tokenRow.token_hash);
 
     const accessToken = this.signAccessToken(user);
     return { accessToken, refreshToken: newPair.refreshToken };
@@ -165,6 +215,7 @@ export class AuthService {
       if (!row.revoked_at && await argon2.verify(row.token_hash, refreshToken)) {
         row.revoked_at = new Date();
         await this.refreshRepo.save(row);
+        await this.expireSessionsByHash(row.token_hash);
         return { message: 'Logout efetuado' };
       }
     }
