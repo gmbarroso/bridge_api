@@ -13,6 +13,6 @@ import { JwtAuthGuard } from './guards/jwt.guard';
   imports: [TypeOrmModule.forFeature([ApiKey, User, RefreshToken, UserSession])],
   providers: [ApiKeyService, AuthService, JwtAuthGuard],
   controllers: [AuthController],
-  exports: [ApiKeyService, AuthService, JwtAuthGuard],
+  exports: [ApiKeyService, AuthService, JwtAuthGuard, TypeOrmModule],
 })
 export class AuthModule {}
