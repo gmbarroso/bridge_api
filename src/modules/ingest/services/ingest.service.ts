@@ -1,325 +1,245 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, DataSource } from 'typeorm';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { DataSource, Repository } from 'typeorm';
 import { Lead } from '../../../database/entities/lead.entity';
+import { CorporateLead } from '../../../database/entities/corporate-lead.entity';
 import { Chat } from '../../../database/entities/chat.entity';
 import { ChatMessage } from '../../../database/entities/chat-message.entity';
-import { LeadAttribute } from '../../../database/entities/lead-attribute.entity';
 import { LeadUpsertDto, LeadUpsertResponseDto } from '../dto/lead-upsert.dto';
-import { LeadAttributeDto } from '../dto/lead-attribute.dto';
 import { MessageDto } from '../dto/message.dto';
-import { IdResolverService } from './id-resolver.service';
-import { Service } from '../../../database/entities/service.entity';
-import { LeadServiceLink } from '../../../database/entities/lead-service-link.entity';
-import { LeadServiceEvent } from '../../../database/entities/lead-service-event.entity';
-import { LeadServiceDto } from '../dto/lead-service.dto';
+
+type LeadKind = 'person' | 'corporate';
 
 @Injectable()
 export class IngestService {
-  constructor(
-    @InjectRepository(Lead)
-    private readonly leadRepository: Repository<Lead>,
-    @InjectRepository(LeadAttribute)
-    private readonly leadAttributeRepository: Repository<LeadAttribute>,
-    @InjectRepository(Service)
-    private readonly serviceRepository: Repository<Service>,
-    @InjectRepository(LeadServiceLink)
-    private readonly leadServiceLinkRepository: Repository<LeadServiceLink>,
-    @InjectRepository(LeadServiceEvent)
-    private readonly leadServiceEventRepository: Repository<LeadServiceEvent>,
-    private readonly idResolverService: IdResolverService,
-    private readonly dataSource: DataSource,
-  ) {}
+  constructor(private readonly dataSource: DataSource) {}
 
-  async upsertLead(
-    organizationId: number,
-    dto: LeadUpsertDto,
-  ): Promise<LeadUpsertResponseDto> {
+  private getLeadRepo(kind: LeadKind, manager = this.dataSource.manager) {
+    return kind === 'corporate'
+      ? manager.getRepository(CorporateLead)
+      : manager.getRepository(Lead);
+  }
+
+  async upsertLead(organizationId: number, dto: LeadUpsertDto): Promise<LeadUpsertResponseDto> {
+    const sessionId = dto.session_id?.trim();
+    if (!sessionId) {
+      throw new BadRequestException('session_id is required');
+    }
+
+    const conversationId = (dto.conversation_id || sessionId).trim();
+    const kind: LeadKind = dto.kind === 'corporate' ? 'corporate' : 'person';
+    const now = new Date();
+
     return this.dataSource.transaction(async (manager) => {
-      let lead: Lead | null = null;
+      const leadRepo = this.getLeadRepo(kind, manager) as Repository<any>;
+
+      let lead: any = await leadRepo.findOne({
+        where: { organization_id: organizationId, session_id: sessionId },
+      });
+
       let created = false;
       let updated = false;
-      let chat: Chat | null = null;
 
-      // Primeiro, tentar encontrar por app + conversation_id
-      if (dto.app && dto.conversation_id) {
-        chat = await manager.findOne(Chat, {
-          where: {
-            organization_id: organizationId,
-            app: dto.app,
-            conversation_id: dto.conversation_id,
-          },
-          relations: ['lead'],
-        });
-
-        if (chat) {
-          lead = chat.lead;
-        }
-      }
-
-      // Se não encontrou por conversa, tentar por telefone
-      if (!lead && dto.phone) {
-        lead = await manager.findOne(Lead, {
-          where: {
-            organization_id: organizationId,
-            phone: dto.phone,
-          },
-        });
-
-        if (lead) {
-        }
-      }
-
-      // Se não encontrou, criar novo lead
       if (!lead) {
-        lead = manager.create(Lead, {
+        const base: any = {
           organization_id: organizationId,
-          name: dto.name,
-          phone: dto.phone,
-          email: dto.email,
-          source: dto.source,
+          session_id: sessionId,
+          source: dto.source || 'whatsapp',
           stage: 'new',
-          first_contact_at: new Date(),
-          last_contact_at: new Date(),
-        });
+          phone: dto.phone ?? null,
+          email: dto.email ?? null,
+          first_contact_at: now,
+          last_contact_at: now,
+          last_message_at: null,
+          first_response_at: null,
+          consents: dto.consents ?? {},
+          tags: dto.tags ?? [],
+          extra_attributes: dto.extra_attributes ?? {},
+        };
 
-        lead = await manager.save(Lead, lead);
+        if (kind === 'person') {
+          base.name = dto.name ?? null;
+          base.document = dto.document ?? null;
+          base.pushName = dto.pushName ?? null;
+          base.servico = dto.servico ?? null;
+        } else {
+          base.company_name = dto.company_name ?? null;
+          base.document = dto.document ?? null;
+        }
+
+        lead = await leadRepo.save(leadRepo.create(base));
         created = true;
       } else {
-        // Atualizar campos básicos se informados (idempotente)
-        const patch: any = {
-          last_contact_at: new Date(),
-        };
-        if (dto.name && dto.name !== lead.name) patch.name = dto.name;
-        if (dto.email !== undefined && dto.email !== lead.email)
-          patch.email = dto.email || null;
-        if (Object.keys(patch).length > 0) {
-          await manager.update(Lead, lead.id, patch);
-          Object.assign(lead, patch);
-          updated = true;
+        const patch: any = { last_contact_at: now };
+        if (dto.phone && dto.phone !== (lead as any).phone) patch.phone = dto.phone;
+        if (dto.email !== undefined && dto.email !== (lead as any).email) patch.email = dto.email ?? null;
+        if (dto.source && dto.source !== (lead as any).source) patch.source = dto.source;
+        if (dto.name && kind === 'person' && dto.name !== (lead as any).name) patch.name = dto.name;
+        if (dto.company_name && kind === 'corporate' && dto.company_name !== (lead as any).company_name) {
+          patch.company_name = dto.company_name;
         }
+        if (dto.document && dto.document !== (lead as any).document) patch.document = dto.document;
+        if (dto.pushName && kind === 'person' && dto.pushName !== (lead as any).pushName) patch.pushName = dto.pushName;
+        if (dto.servico && kind === 'person' && dto.servico !== (lead as any).servico) patch.servico = dto.servico;
+        if (dto.consents) patch.consents = { ...(lead as any).consents, ...dto.consents };
+        if (dto.extra_attributes) {
+          patch.extra_attributes = { ...(lead as any).extra_attributes, ...dto.extra_attributes };
+        }
+        if (dto.tags && dto.tags.length) {
+          const existing = new Set<string>((lead as any).tags ?? []);
+          for (const tag of dto.tags) existing.add(tag);
+          patch.tags = Array.from(existing);
+        }
+
+        await leadRepo.update((lead as any).id, patch);
+        Object.assign(lead, patch);
+        updated = Object.keys(patch).some((key) => key !== 'last_contact_at');
       }
 
-      // Criar ou atualizar conversa se necessário
-      if (!chat && (dto.app || dto.conversation_id || dto.channel)) {
-        chat = await manager.findOne(Chat, {
-          where: {
-            organization_id: organizationId,
-            lead_id: lead.id,
-            channel: dto.channel || dto.source,
-            ...(dto.app && { app: dto.app }),
-            ...(dto.conversation_id && { conversation_id: dto.conversation_id }),
-          },
+      // Ensure chat exists and points to this lead
+      const chatRepo = manager.getRepository(Chat);
+      let chat = await chatRepo.findOne({
+        where: { organization_id: organizationId, conversation_id: conversationId },
+      });
+
+      if (!chat) {
+        const chatPayload = chatRepo.create({
+          organization_id: organizationId,
+          sub_organization_id: (lead as any).sub_organization_id ?? null,
+          lead_id: kind === 'person' ? (lead as any).id : null,
+          corporate_lead_id: kind === 'corporate' ? (lead as any).id : null,
+          conversation_id: conversationId,
+          channel: dto.channel || dto.source || 'whatsapp',
+          app: dto.app ?? null,
+          phone: dto.phone ?? (lead as any).phone ?? null,
         });
-
-        if (!chat) {
-          chat = manager.create(Chat, {
-            organization_id: organizationId,
-            lead_id: lead.id,
-            sub_organization_id: lead.sub_organization_id ?? null,
-            channel: dto.channel || dto.source,
-            app: dto.app,
-            conversation_id: dto.conversation_id,
-            phone: lead.phone,
-          });
-
-          chat = await manager.save(Chat, chat);
+        chat = await chatRepo.save(chatPayload);
+      } else {
+        const patch: Partial<Chat> = {};
+        if (kind === 'person' && !chat.lead_id) {
+          patch.lead_id = (lead as any).id;
+        }
+        if (kind === 'corporate' && !chat.corporate_lead_id) {
+          patch.corporate_lead_id = (lead as any).id;
+        }
+        if (dto.channel && dto.channel !== chat.channel) patch.channel = dto.channel;
+        if (dto.app && dto.app !== chat.app) patch.app = dto.app;
+        if (dto.phone && !chat.phone) patch.phone = dto.phone;
+        if (Object.keys(patch).length) {
+          await chatRepo.update(chat.id, patch);
+          Object.assign(chat, patch);
         }
       }
 
       return {
-        lead_id: lead.id,
-        lead_public_id: lead.public_id,
+        lead_id: Number((lead as any).id),
+        lead_public_id: (lead as any).public_id,
         created,
         updated,
-        stage: lead.stage,
+        stage: (lead as any).stage,
         conversation_public_id: chat?.public_id,
+        session_id: sessionId,
+        kind,
       };
     });
   }
 
-  async addLeadAttribute(
-    organizationId: number,
-    dto: LeadAttributeDto,
-  ): Promise<void> {
-    // Compat: se a chave indicar serviço, redirecionar para lead-service
-    const serviceKeys = new Set(['servico_desejado','servico_interesse','service','service_slug']);
-    if (serviceKeys.has(dto.key)) {
-      const lsDto: LeadServiceDto = {
-        lead_public_id: dto.lead_public_id,
-        lead_id: dto.lead_id,
-        service_slug: dto.value,
-        relation: dto.key === 'servico_interesse' ? 'interested' : 'desired',
-        source: dto.source || 'attribute_compat',
-      };
-      await this.addLeadService(organizationId, lsDto);
-      return;
-    }
-    const leadId = await this.idResolverService.resolveLeadId(
-      organizationId,
-      dto.lead_public_id,
-      dto.lead_id,
-    );
-
-    const attribute = this.leadAttributeRepository.create({
-      organization_id: organizationId,
-      lead_id: leadId,
-      key: dto.key,
-      value: dto.value,
-      source: dto.source,
-    });
-
-    await this.leadAttributeRepository.save(attribute);
-
-    // Opcional: refletir atributos canônicos no lead principal
-    if (dto.key === 'name' || dto.key === 'nome') {
-      await this.leadRepository.update(leadId, { name: dto.value });
-    }
-    if (dto.key === 'email') {
-      await this.leadRepository.update(leadId, { email: dto.value });
-    }
-
-  }
-
-  /**
-   * Registrar mensagem e atualizar timestamps
-   */
   async addMessage(organizationId: number, dto: MessageDto): Promise<void> {
-    return this.dataSource.transaction(async (manager) => {
-      const lead = await this.idResolverService.getLead(
-        organizationId,
-        dto.lead_public_id,
-        dto.lead_id,
-      );
+    const sessionOrConversation = dto.conversation_id || dto.session_id;
+    if (!sessionOrConversation) {
+      throw new BadRequestException('conversation_id or session_id must be provided');
+    }
+    const conversationId = sessionOrConversation.trim();
+    const timestamp = dto.ts ? new Date(dto.ts) : new Date();
 
-      // Encontrar ou criar conversa
-      let chat = await manager.findOne(Chat, {
-        where: {
-          organization_id: organizationId,
-          lead_id: lead.id,
-          channel: dto.channel || 'whatsapp',
-          ...(dto.app && { app: dto.app }),
-          ...(dto.conversation_id && { conversation_id: dto.conversation_id }),
-        },
+    await this.dataSource.transaction(async (manager) => {
+      const chatRepo = manager.getRepository(Chat);
+      let chat = await chatRepo.findOne({
+        where: { organization_id: organizationId, conversation_id: conversationId },
       });
 
       if (!chat) {
-        chat = manager.create(Chat, {
-          organization_id: organizationId,
-          lead_id: lead.id,
-          sub_organization_id: lead.sub_organization_id ?? null,
-          channel: dto.channel || 'whatsapp',
-          app: dto.app,
-          conversation_id: dto.conversation_id,
-          phone: lead.phone,
+        const lead = await manager.getRepository(Lead).findOne({
+          where: { organization_id: organizationId, session_id: conversationId },
         });
+        const corporateLead = lead
+          ? null
+          : await manager.getRepository(CorporateLead).findOne({
+              where: { organization_id: organizationId, session_id: conversationId },
+            });
 
-        chat = await manager.save(Chat, chat);
+        if (!lead && !corporateLead) {
+          throw new NotFoundException('No lead or corporate lead found for provided session');
+        }
+
+        chat = await chatRepo.save(
+          chatRepo.create({
+            organization_id: organizationId,
+            sub_organization_id: (lead ?? corporateLead)?.sub_organization_id ?? null,
+            lead_id: lead ? lead.id : null,
+            corporate_lead_id: corporateLead ? corporateLead.id : null,
+            conversation_id: conversationId,
+            channel: dto.channel || 'whatsapp',
+            app: dto.app ?? null,
+            phone: dto.phone ?? lead?.phone ?? corporateLead?.phone ?? null,
+          }),
+        );
       }
 
-      // Criar mensagem
-      const messageTimestamp = dto.ts ? new Date(dto.ts) : new Date();
-
-      const message = manager.create(ChatMessage, {
-        organization_id: organizationId,
-        chat_id: chat.id,
-        lead_id: lead.id,
-        conversation_id: chat.conversation_id ?? null,
-        direction: dto.direction as 'in' | 'out' | 'system',
-        message_type: dto.type,
-        payload: dto.payload,
-        bot_message: dto.direction === 'out' ? (dto.payload?.text ?? null) : null,
-        user_message: dto.direction === 'in' ? (dto.payload?.text ?? null) : null,
-        phone: chat.phone ?? lead.phone ?? null,
+      const messageRepo = manager.getRepository(ChatMessage);
+      const message = messageRepo.create({
+        conversation_id: conversationId,
+        message_type: dto.type || 'text',
+        bot_message: dto.direction === 'out' ? dto.payload?.text ?? null : null,
+        user_message: dto.direction === 'in' ? dto.payload?.text ?? null : null,
+        phone: dto.phone ?? chat.phone ?? null,
+        active: true,
         data: dto.payload ? JSON.stringify(dto.payload) : null,
-        sent_at: messageTimestamp,
+        sent_at: timestamp,
+      });
+      await messageRepo.save(message);
+
+      await chatRepo.update(chat.id, {
+        last_message_at: timestamp,
+        phone: chat.phone ?? dto.phone ?? null,
       });
 
-      await manager.save(ChatMessage, message);
-
-      // Atualizar timestamps da conversa
-      await manager.update(Chat, chat.id, {
-        last_message_at: messageTimestamp,
-      });
-
-      // Atualizar timestamps do lead
-      const updateData: any = {
-        last_message_at: messageTimestamp,
-        last_contact_at: messageTimestamp,
+      const updatePayload: any = {
+        last_message_at: timestamp,
+        last_contact_at: timestamp,
       };
 
-      // Se for a primeira resposta da equipe, marcar first_response_at
-      if (dto.direction === 'out' && !lead.first_response_at) {
-        updateData.first_response_at = messageTimestamp;
+      if (dto.direction === 'out') {
+        updatePayload.first_response_at = timestamp;
+      }
+      if (dto.direction === 'in') {
+        updatePayload.first_contact_at = timestamp;
       }
 
-      if (dto.direction === 'in' && !lead.first_contact_at) {
-        updateData.first_contact_at = messageTimestamp;
+      if (chat.lead_id) {
+        const leadRepo = manager.getRepository(Lead);
+        const lead = await leadRepo.findOne({ where: { id: chat.lead_id } });
+        if (lead) {
+          if (lead.first_response_at && dto.direction === 'out') {
+            delete updatePayload.first_response_at;
+          }
+          if (lead.first_contact_at && dto.direction === 'in') {
+            delete updatePayload.first_contact_at;
+          }
+          await leadRepo.update(chat.lead_id, updatePayload);
+        }
+      } else if (chat.corporate_lead_id) {
+        const corpRepo = manager.getRepository(CorporateLead);
+        const corp = await corpRepo.findOne({ where: { id: chat.corporate_lead_id } });
+        if (corp) {
+          if (corp.first_response_at && dto.direction === 'out') {
+            delete updatePayload.first_response_at;
+          }
+          if (corp.first_contact_at && dto.direction === 'in') {
+            delete updatePayload.first_contact_at;
+          }
+          await corpRepo.update(chat.corporate_lead_id, updatePayload);
+        }
       }
-
-      await manager.update(Lead, lead.id, updateData);
-
     });
   }
-
-  /**
-   * Vincular um serviço a um lead, resolvendo service por slug/title/public_id
-   */
-  async addLeadService(organizationId: number, dto: LeadServiceDto): Promise<void> {
-    const leadId = await this.idResolverService.resolveLeadId(
-      organizationId,
-      dto.lead_public_id,
-      dto.lead_id,
-    );
-
-    // Resolver service
-    let service: Service | null = null;
-    if (dto.service_public_id) {
-      service = await this.serviceRepository.findOne({ where: { public_id: dto.service_public_id, organization_id: organizationId } });
-    }
-    if (!service && dto.service_slug) {
-      service = await this.serviceRepository.findOne({ where: { slug: dto.service_slug, organization_id: organizationId } });
-    }
-    if (!service && dto.service_title) {
-      service = await this.serviceRepository.findOne({ where: { title: dto.service_title, organization_id: organizationId } });
-    }
-    if (!service) {
-      throw new NotFoundException('Service not found for provided identifiers');
-    }
-
-    const relation = dto.relation || 'desired';
-
-    // Upsert link
-    const existing = await this.leadServiceLinkRepository.findOne({ where: {
-      organization_id: organizationId,
-      lead_id: leadId,
-      service_id: service.id,
-      relation,
-    }});
-
-    if (existing) {
-      // update timestamp and source
-      existing.source = dto.source || existing.source;
-      existing.ts = new Date();
-      await this.leadServiceLinkRepository.save(existing);
-    } else {
-      await this.leadServiceLinkRepository.save({
-        organization_id: organizationId,
-        lead_id: leadId,
-        service_id: service.id,
-        relation,
-        source: dto.source || null,
-      });
-    }
-
-    // Append a historical event into lead_service_events (append-only)
-    await this.leadServiceEventRepository.save({
-      organization_id: organizationId,
-      lead_id: leadId,
-      service_id: service.id,
-      relation,
-      source: dto.source || 'lead_service',
-    });
-  }
-
 }

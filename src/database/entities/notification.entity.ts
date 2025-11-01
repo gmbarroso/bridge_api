@@ -10,11 +10,12 @@ import {
 import { Organization } from './organization.entity';
 import { Suborganization } from './suborganization.entity';
 import { Lead } from './lead.entity';
-import { Chat } from './chat.entity';
+import { CorporateLead } from './corporate-lead.entity';
 
 @Entity('notifications')
-@Index(['organization_id', 'created_at'])
-@Index(['organization_id', 'read_at'])
+@Index(['organization_id'])
+@Index(['lead_id'])
+@Index(['corporate_lead_id'])
 export class Notification {
   @PrimaryGeneratedColumn('increment', { type: 'bigint' })
   id!: number;
@@ -44,11 +45,11 @@ export class Notification {
   lead!: Lead | null;
 
   @Column({ type: 'bigint', nullable: true })
-  chat_id!: number | null;
+  corporate_lead_id!: number | null;
 
-  @ManyToOne(() => Chat, { onDelete: 'SET NULL', nullable: true })
-  @JoinColumn({ name: 'chat_id' })
-  chat!: Chat | null;
+  @ManyToOne(() => CorporateLead, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'corporate_lead_id' })
+  corporate_lead!: CorporateLead | null;
 
   @Column({ type: 'jsonb', default: () => "'{}'::jsonb" })
   payload!: Record<string, any>;

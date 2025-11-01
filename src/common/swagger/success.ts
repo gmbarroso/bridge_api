@@ -38,31 +38,21 @@ export class LoginResponse extends TokenPairResponse {
   user!: LoginUser;
 }
 
-// -------- BFF Models --------
-
-export class BffServiceLink {
-  @ApiProperty({ example: 'corte-feminino' })
-  slug!: string;
-
-  @ApiProperty({ example: 'Corte Feminino' })
-  title!: string;
-
-  @ApiProperty({ example: 'desired', enum: ['desired', 'interested', 'purchased'] })
-  relation!: 'desired' | 'interested' | 'purchased';
-
-  @ApiProperty({ example: '2025-10-10T12:34:56.000Z' })
-  ts!: string;
-}
-
 export class BffLeadListItem {
+  @ApiProperty({ example: 'session-01HZY9Q3CH9R9' })
+  sessionId!: string;
+
   @ApiProperty({ example: 'f1b0...' })
-  id!: string;
+  leadPublicId!: string;
 
-  @ApiProperty({ example: 'Ana' })
-  name!: string;
+  @ApiProperty({ example: 'Ana', nullable: true })
+  name!: string | null;
 
-  @ApiProperty({ example: '+55 21 99999-9999' })
-  phone!: string;
+  @ApiProperty({ example: 'ana@example.com', nullable: true })
+  email!: string | null;
+
+  @ApiProperty({ example: '+55 21 99999-9999', nullable: true })
+  phone!: string | null;
 
   @ApiProperty({ example: 'whatsapp' })
   source!: string;
@@ -77,7 +67,10 @@ export class BffLeadListItem {
   lastMessageAt!: string | null;
 
   @ApiProperty({ example: 'corte-feminino', nullable: true })
-  servico_desejado?: string | null;
+  servico!: string | null;
+
+  @ApiProperty({ example: 'c1b0b0d1-0000-4000-8000-000000000000', nullable: true })
+  conversationPublicId!: string | null;
 }
 
 export class BffLeadListResponse {
@@ -88,26 +81,21 @@ export class BffLeadListResponse {
   nextCursor!: string | null;
 }
 
-export class BffLeadDetailTotals {
-  @ApiProperty({ example: 2 })
-  conversations!: number;
+export class BffCorporateLeadListItem {
+  @ApiProperty({ example: 'corp-session-123' })
+  sessionId!: string;
 
-  @ApiProperty({ example: 5 })
-  messages!: number;
-}
+  @ApiProperty({ example: 'corp-public-id' })
+  leadPublicId!: string;
 
-export class BffLeadDetailResponse {
-  @ApiProperty({ example: 'f1b0...' })
-  id!: string;
+  @ApiProperty({ example: 'Bridge Tecnologia', nullable: true })
+  companyName!: string | null;
 
-  @ApiProperty({ example: 'Ana' })
-  name!: string;
+  @ApiProperty({ example: 'contato@bridge.inc', nullable: true })
+  email!: string | null;
 
-  @ApiProperty({ example: '+55 21 99999-9999' })
-  phone!: string;
-
-  @ApiProperty({ example: 'ana@ex.com', nullable: true })
-  email?: string | null;
+  @ApiProperty({ example: '+55 11 90000-0000', nullable: true })
+  phone!: string | null;
 
   @ApiProperty({ example: 'whatsapp' })
   source!: string;
@@ -121,17 +109,16 @@ export class BffLeadDetailResponse {
   @ApiProperty({ example: '2025-10-11T10:00:00.000Z', nullable: true })
   lastMessageAt!: string | null;
 
-  @ApiProperty({ example: 'corte-feminino', nullable: true })
-  desiredService?: string | null;
+  @ApiProperty({ example: 'c1b0b0d1-0000-4000-8000-000000000000', nullable: true })
+  conversationPublicId!: string | null;
+}
 
-  @ApiProperty({ type: [BffServiceLink] })
-  serviceLinks!: BffServiceLink[];
+export class BffCorporateLeadListResponse {
+  @ApiProperty({ type: [BffCorporateLeadListItem] })
+  items!: BffCorporateLeadListItem[];
 
-  @ApiProperty({ type: 'object', additionalProperties: true })
-  attributes!: Record<string, any>;
-
-  @ApiProperty({ type: BffLeadDetailTotals })
-  totals!: BffLeadDetailTotals;
+  @ApiProperty({ example: null, nullable: true })
+  nextCursor!: string | null;
 }
 
 export class BffTimelineMessageItem {
@@ -160,37 +147,6 @@ export class BffTimelineMessageItem {
 export class BffTimelineResponse {
   @ApiProperty({ type: [BffTimelineMessageItem] })
   items!: BffTimelineMessageItem[];
-
-  @ApiProperty({ example: null, nullable: true })
-  nextCursor!: string | null;
-}
-
-export class BffServiceEventItem {
-  @ApiProperty({ example: 'service_event' })
-  kind!: 'service_event';
-
-  @ApiProperty({ example: 'se1...' })
-  id!: string;
-
-  @ApiProperty({ example: '2025-10-11T10:00:00.000Z' })
-  createdAt!: string;
-
-  @ApiProperty({ example: 'corte-feminino' })
-  slug!: string;
-
-  @ApiProperty({ example: 'Corte Feminino', nullable: true })
-  title!: string | null;
-
-  @ApiProperty({ example: 'desired', enum: ['desired','interested','purchased','recommended'] })
-  relation!: 'desired' | 'interested' | 'purchased' | 'recommended';
-
-  @ApiProperty({ example: 'bot_whatsapp', nullable: true })
-  source!: string | null;
-}
-
-export class BffServiceHistoryResponse {
-  @ApiProperty({ type: [BffServiceEventItem] })
-  items!: BffServiceEventItem[];
 
   @ApiProperty({ example: null, nullable: true })
   nextCursor!: string | null;
