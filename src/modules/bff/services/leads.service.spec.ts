@@ -34,6 +34,12 @@ describe('LeadsService', () => {
         created_at: createdAt,
         last_message_at: null,
         servico: 'corte',
+        colaboradores: 15,
+        tipo_cliente: 'PME',
+        cargo: 'Gerente',
+        empresa: 'Bridge LTDA',
+        nome_agendado: 'Reunião com Ana',
+        cpf_cnpj: '12345678900',
         conversation_public_id: 'conv-public-id',
       },
     ];
@@ -53,6 +59,12 @@ describe('LeadsService', () => {
       createdAt: createdAt.toISOString(),
       lastMessageAt: null,
       servico: 'corte',
+      colaboradores: 15,
+      tipoCliente: 'PME',
+      cargo: 'Gerente',
+      empresa: 'Bridge LTDA',
+      nomeAgendado: 'Reunião com Ana',
+      cpfCnpj: '12345678900',
       conversationPublicId: 'conv-public-id',
     });
   });

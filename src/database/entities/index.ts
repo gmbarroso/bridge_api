@@ -4,7 +4,6 @@ export { Chat } from './chat.entity';
 export { ChatMessage } from './chat-message.entity';
 export { Document } from './document.entity';
 export { Lead } from './lead.entity';
-export { CorporateLead } from './corporate-lead.entity';
 export { N8nChatHistory } from './n8n-chat-history.entity';
 export { Notification } from './notification.entity';
 export { Organization } from './organization.entity';

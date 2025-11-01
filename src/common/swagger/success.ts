@@ -71,6 +71,24 @@ export class BffLeadListItem {
 
   @ApiProperty({ example: 'c1b0b0d1-0000-4000-8000-000000000000', nullable: true })
   conversationPublicId!: string | null;
+
+  @ApiProperty({ example: 25, nullable: true })
+  colaboradores!: number | null;
+
+  @ApiProperty({ example: 'PME', nullable: true })
+  tipoCliente!: string | null;
+
+  @ApiProperty({ example: 'Diretor Comercial', nullable: true })
+  cargo!: string | null;
+
+  @ApiProperty({ example: 'Bridge Tecnologia', nullable: true })
+  empresa!: string | null;
+
+  @ApiProperty({ example: 'Reunião com João', nullable: true })
+  nomeAgendado!: string | null;
+
+  @ApiProperty({ example: '12.345.678/0001-99', nullable: true })
+  cpfCnpj!: string | null;
 }
 
 export class BffLeadListResponse {
@@ -90,6 +108,24 @@ export class BffCorporateLeadListItem {
 
   @ApiProperty({ example: 'Bridge Tecnologia', nullable: true })
   companyName!: string | null;
+
+  @ApiProperty({ example: 50, nullable: true })
+  colaboradores!: number | null;
+
+  @ApiProperty({ example: 'Enterprise', nullable: true })
+  tipoCliente!: string | null;
+
+  @ApiProperty({ example: 'CEO', nullable: true })
+  cargo!: string | null;
+
+  @ApiProperty({ example: 'Bridge Tecnologia LTDA', nullable: true })
+  empresa!: string | null;
+
+  @ApiProperty({ example: 'Reunião de onboarding', nullable: true })
+  nomeAgendado!: string | null;
+
+  @ApiProperty({ example: '12.345.678/0001-99', nullable: true })
+  cpfCnpj!: string | null;
 
   @ApiProperty({ example: 'contato@bridge.inc', nullable: true })
   email!: string | null;

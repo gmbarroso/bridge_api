@@ -26,7 +26,7 @@ export class CorporateLeadsController {
   constructor(private readonly service: CorporateLeadsService) {}
 
   @Get()
-  @ApiOperation({ summary: 'Lista corporate leads da organização (tabela corporate_leads)' })
+  @ApiOperation({ summary: 'Lista corporate leads (kind = corporate) da organização' })
   @ApiQuery({ name: 'stage', required: false, description: 'Filtro por stage' })
   @ApiQuery({ name: 'search', required: false, description: 'Busca por empresa/telefone/session_id' })
   @ApiQuery({ name: 'limit', required: false, description: 'Limite de itens (1-200, padrão 50)' })
@@ -49,8 +49,17 @@ export class CorporateLeadsController {
       limit: query.limit ?? 50,
       items: result.items.map((item) => ({
         sessionId: item.sessionId,
+        companyName: item.companyName,
+        email: item.email,
+        phone: item.phone,
         stage: item.stage,
         lastMessageAt: item.lastMessageAt,
+        colaboradores: item.colaboradores,
+        tipoCliente: item.tipoCliente,
+        cargo: item.cargo,
+        empresa: item.empresa,
+        nomeAgendado: item.nomeAgendado,
+        cpfCnpj: item.cpfCnpj,
       })),
     });
     const etag = 'W/"' + createHash('sha1').update(fingerprint).digest('hex') + '"';

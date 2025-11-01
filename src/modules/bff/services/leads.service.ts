@@ -27,9 +27,16 @@ export class LeadsService {
         'lead.created_at AS created_at',
         'lead.last_message_at AS last_message_at',
         'lead.servico AS servico',
+        'lead.colaboradores AS colaboradores',
+        'lead.tipo_cliente AS tipo_cliente',
+        'lead.cargo AS cargo',
+        'lead.empresa AS empresa',
+        'lead.nome_agendado AS nome_agendado',
+        'lead.cpf_cnpj AS cpf_cnpj',
         'chat.public_id AS conversation_public_id',
       ])
       .where('lead.organization_id = :orgId', { orgId })
+      .andWhere('lead.kind = :kind', { kind: 'person' })
       .orderBy('lead.created_at', 'DESC')
       .limit(limit);
 
@@ -60,6 +67,12 @@ export class LeadsService {
         ? row.last_message_at?.toISOString?.() ?? new Date(row.last_message_at).toISOString()
         : null,
       servico: row.servico ?? null,
+      colaboradores: row.colaboradores !== null && row.colaboradores !== undefined ? Number(row.colaboradores) : null,
+      tipoCliente: row.tipo_cliente ?? null,
+      cargo: row.cargo ?? null,
+      empresa: row.empresa ?? null,
+      nomeAgendado: row.nome_agendado ?? null,
+      cpfCnpj: row.cpf_cnpj ?? null,
       conversationPublicId: row.conversation_public_id ?? null,
     }));
 
