@@ -71,37 +71,7 @@ export class LeadsService {
     const qb = this.dataSource
       .getRepository(Lead)
       .createQueryBuilder('lead')
-      .leftJoin(Chat, 'chat', 'chat.conversation_id = lead.session_id AND chat.organization_id = lead.organization_id')
-      .select([
-        'lead.id AS lead_id',
-        'lead.public_id AS lead_public_id',
-        'lead.session_id AS session_id',
-        'lead.kind AS kind',
-        'lead.company_name AS company_name',
-        'lead.name AS name',
-        'lead.email AS email',
-        'lead.phone AS phone',
-        'lead.source AS source',
-        'lead.stage AS stage',
-        'lead.created_at AS created_at',
-        'lead.last_message_at AS last_message_at',
-        'lead.servico AS servico',
-        'lead.colaboradores AS colaboradores',
-        'lead.tipo_cliente AS tipo_cliente',
-        'lead.cargo AS cargo',
-        'lead.empresa AS empresa',
-        'lead.nome_agendado AS nome_agendado',
-        'lead.cpf_cnpj AS cpf_cnpj',
-        'chat.public_id AS conversation_public_id',
-      ])
-      .where('lead.organization_id = :orgId', { orgId })
-      .orderBy('lead.created_at', 'DESC')
-      .addOrderBy('lead.id', 'DESC')
-      .limit(take);
-
-    if (skip > 0) {
-      qb.offset(skip);
-    }
+      .where('lead.organization_id = :orgId', { orgId });
 
     if (kind) {
       qb.andWhere('lead.kind = :kind', { kind });
@@ -127,6 +97,39 @@ export class LeadsService {
       );
     }
 
+    const total = await qb.getCount();
+
+    qb.leftJoin(Chat, 'chat', 'chat.conversation_id = lead.session_id AND chat.organization_id = lead.organization_id')
+      .select([
+        'lead.id AS lead_id',
+        'lead.public_id AS lead_public_id',
+        'lead.session_id AS session_id',
+        'lead.kind AS kind',
+        'lead.company_name AS company_name',
+        'lead.name AS name',
+        'lead.email AS email',
+        'lead.phone AS phone',
+        'lead.source AS source',
+        'lead.stage AS stage',
+        'lead.created_at AS created_at',
+        'lead.last_message_at AS last_message_at',
+        'lead.servico AS servico',
+        'lead.colaboradores AS colaboradores',
+        'lead.tipo_cliente AS tipo_cliente',
+        'lead.cargo AS cargo',
+        'lead.empresa AS empresa',
+        'lead.nome_agendado AS nome_agendado',
+        'lead.cpf_cnpj AS cpf_cnpj',
+        'chat.public_id AS conversation_public_id',
+      ])
+      .orderBy('lead.created_at', 'DESC')
+      .addOrderBy('lead.id', 'DESC')
+      .limit(take);
+
+    if (skip > 0) {
+      qb.offset(skip);
+    }
+
     if (query.cursor) {
       const { createdAt, id } = this.decodeCursor(query.cursor);
       qb.andWhere('(lead.created_at, lead.id) < (:createdAt, :id)', { createdAt, id });
@@ -143,6 +146,7 @@ export class LeadsService {
     return {
       items,
       nextCursor,
+      total,
     };
   }
 

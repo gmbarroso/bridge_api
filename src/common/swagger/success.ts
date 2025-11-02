@@ -103,6 +103,9 @@ export class BffLeadListResponse {
 
   @ApiProperty({ example: null, nullable: true })
   nextCursor!: string | null;
+
+  @ApiProperty({ example: 25, description: 'Total de itens que correspondem à busca, sem paginação.' })
+  total!: number;
 }
 
 export class BffCorporateLeadListItem {
@@ -161,6 +164,9 @@ export class BffCorporateLeadListResponse {
 
   @ApiProperty({ example: null, nullable: true })
   nextCursor!: string | null;
+
+  @ApiProperty({ example: 25, description: 'Total de itens que correspondem à busca, sem paginação.' })
+  total!: number;
 }
 
 export class BffTimelineMessageItem {
