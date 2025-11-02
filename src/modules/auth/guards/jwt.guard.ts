@@ -61,9 +61,11 @@ export class JwtAuthGuard implements CanActivate {
       throw new UnauthorizedException('Organização divergente, faça login novamente');
     }
 
-    req.userId = user.id;
-    req.organizationId = user.organization_id;
-    req.suborganizationId = user.sub_organization_id ?? null;
+    req.userId = Number(user.id);
+    req.organizationId = Number(user.organization_id);
+    req.suborganizationId = user.sub_organization_id !== null && user.sub_organization_id !== undefined
+      ? Number(user.sub_organization_id)
+      : null;
     req.email = user.email;
     req.role = user.role;
 
