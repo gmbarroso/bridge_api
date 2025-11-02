@@ -64,7 +64,24 @@ export class CorporateLeadsService {
     const qb = this.dataSource
       .getRepository(Lead)
       .createQueryBuilder('lead')
-      .leftJoin(Chat, 'chat', 'chat.conversation_id = lead.session_id AND chat.organization_id = lead.organization_id')
+      .where('lead.organization_id = :orgId', { orgId })
+      .andWhere('lead.kind = :kind', { kind: 'corporate' });
+
+    if (query.stage) {
+      qb.andWhere('lead.stage = :stage', { stage: query.stage });
+    }
+
+    if (query.search) {
+      const search = `%${query.search.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`;
+      qb.andWhere(
+        '(lead.company_name ILIKE :search OR lead.phone ILIKE :search OR lead.session_id ILIKE :search)',
+        { search },
+      );
+    }
+
+    const total = await qb.getCount();
+
+    qb.leftJoin(Chat, 'chat', 'chat.conversation_id = lead.session_id AND chat.organization_id = lead.organization_id')
       .select([
         'lead.id AS lead_id',
         'lead.public_id AS lead_public_id',
@@ -84,26 +101,12 @@ export class CorporateLeadsService {
         'lead.cpf_cnpj AS cpf_cnpj',
         'chat.public_id AS conversation_public_id',
       ])
-      .where('lead.organization_id = :orgId', { orgId })
-      .andWhere('lead.kind = :kind', { kind: 'corporate' })
       .orderBy('lead.created_at', 'DESC')
       .addOrderBy('lead.id', 'DESC')
       .limit(take);
 
     if (skip > 0) {
       qb.offset(skip);
-    }
-
-    if (query.stage) {
-      qb.andWhere('lead.stage = :stage', { stage: query.stage });
-    }
-
-    if (query.search) {
-      const search = `%${query.search.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`;
-      qb.andWhere(
-        '(lead.company_name ILIKE :search OR lead.phone ILIKE :search OR lead.session_id ILIKE :search)',
-        { search },
-      );
     }
 
     if (query.cursor) {
@@ -120,6 +123,7 @@ export class CorporateLeadsService {
     return {
       items,
       nextCursor: hasMore ? this.encodeCursor(rows[limit]) : null,
+      total,
     };
   }
 }
