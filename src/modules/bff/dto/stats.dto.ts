@@ -1,4 +1,5 @@
-import { IsDateString, IsOptional } from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsDateString, IsInt, IsOptional, Max, Min } from 'class-validator';
 
 export class TrendQueryDto {
   @IsOptional()
@@ -8,6 +9,19 @@ export class TrendQueryDto {
   @IsOptional()
   @IsDateString()
   dateTo?: string; // inclusive
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  page?: number;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(200)
+  limit?: number;
 }
 
 export type SummaryStats = {

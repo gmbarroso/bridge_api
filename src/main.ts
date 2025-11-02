@@ -17,6 +17,8 @@ import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { INestApplication } from '@nestjs/common';
 import { RequestContextInterceptor } from './common/interceptors/request-context.interceptor';
+import { RequestLoggerInterceptor } from './common/interceptors/request-logger.interceptor';
+import { UpdateLeadDto } from './modules/bff/dto/leads.dto';
 
 let cachedApp: INestApplication;
 
@@ -49,7 +51,10 @@ async function createApp() {
     }),
   );
 
-  app.useGlobalInterceptors(new RequestContextInterceptor());
+  app.useGlobalInterceptors(
+    new RequestContextInterceptor(),
+    new RequestLoggerInterceptor(),
+  );
 
   const config = new DocumentBuilder()
     .setTitle('Bridge API')
@@ -89,6 +94,7 @@ async function createApp() {
       BffCorporateLeadListResponse,
       BffTimelineMessageItem,
       BffTimelineResponse,
+      UpdateLeadDto,
     ],
   });
   SwaggerModule.setup('api', app, document, {
