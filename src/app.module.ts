@@ -8,6 +8,7 @@ import * as entities from './database/entities';
 import { AuthModule } from './modules/auth/auth.module';
 import { IngestModule } from './modules/ingest/ingest.module';
 import { BffModule } from './modules/bff/bff.module';
+import { RequestLoggerInterceptor } from './common/interceptors/request-logger.interceptor';
 
 @Module({
   imports: [

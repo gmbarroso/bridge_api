@@ -39,11 +39,17 @@ export class LoginResponse extends TokenPairResponse {
 }
 
 export class BffLeadListItem {
+  @ApiProperty({ example: 'person', enum: ['person', 'corporate'] })
+  kind!: 'person' | 'corporate';
+
   @ApiProperty({ example: 'session-01HZY9Q3CH9R9' })
   sessionId!: string;
 
   @ApiProperty({ example: 'f1b0...' })
   leadPublicId!: string;
+
+  @ApiProperty({ example: 'Bridge Tecnologia', nullable: true })
+  companyName!: string | null;
 
   @ApiProperty({ example: 'Ana', nullable: true })
   name!: string | null;
