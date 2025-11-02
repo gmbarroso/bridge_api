@@ -61,6 +61,24 @@ export class CorporateLeadsService {
     const useCursor = Boolean(query.cursor);
     const skip = !useCursor && query.page && query.page > 1 ? (query.page - 1) * limit : 0;
 
+    const totalQb = this.dataSource.getRepository(Lead).createQueryBuilder('lead');
+    totalQb
+      .where('lead.organization_id = :orgId', { orgId })
+      .andWhere('lead.kind = :kind', { kind: 'corporate' });
+
+    if (query.stage) {
+      totalQb.andWhere('lead.stage = :stage', { stage: query.stage });
+    }
+    if (query.search) {
+      const search = `%${query.search.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`;
+      totalQb.andWhere(
+        '(lead.company_name ILIKE :search OR lead.phone ILIKE :search OR lead.session_id ILIKE :search)',
+        { search },
+      );
+    }
+
+    const total = await totalQb.getCount();
+
     const qb = this.dataSource
       .getRepository(Lead)
       .createQueryBuilder('lead')
@@ -78,8 +96,6 @@ export class CorporateLeadsService {
         { search },
       );
     }
-
-    const total = await qb.getCount();
 
     qb.leftJoin(Chat, 'chat', 'chat.conversation_id = lead.session_id AND chat.organization_id = lead.organization_id')
       .select([

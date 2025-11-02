@@ -68,6 +68,24 @@ export class LeadsService {
     const useCursor = Boolean(query.cursor);
     const skip = !useCursor && query.page && query.page > 1 ? (query.page - 1) * limit : 0;
 
+    const totalQb = this.dataSource.getRepository(Lead).createQueryBuilder('lead');
+    totalQb
+      .where('lead.organization_id = :orgId', { orgId })
+      .andWhere(kind ? 'lead.kind = :kind' : '1=1', { kind });
+
+    if (query.stage) {
+      totalQb.andWhere('lead.stage = :stage', { stage: query.stage });
+    }
+    if (query.search) {
+      const search = `%${query.search.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`;
+      totalQb.andWhere(
+        '(lead.name ILIKE :search OR lead.phone ILIKE :search OR lead.email ILIKE :search OR lead.session_id ILIKE :search OR lead.company_name ILIKE :search)',
+        { search },
+      );
+    }
+
+    const total = await totalQb.getCount();
+
     const qb = this.dataSource
       .getRepository(Lead)
       .createQueryBuilder('lead')
@@ -84,20 +102,10 @@ export class LeadsService {
     if (query.search) {
       const search = `%${query.search.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`;
       qb.andWhere(
-        '(' +
-          [
-            'lead.name ILIKE :search',
-            'lead.phone ILIKE :search',
-            'lead.email ILIKE :search',
-            'lead.session_id ILIKE :search',
-            'lead.company_name ILIKE :search',
-          ].join(' OR ') +
-          ')',
+        '(lead.name ILIKE :search OR lead.phone ILIKE :search OR lead.email ILIKE :search OR lead.session_id ILIKE :search OR lead.company_name ILIKE :search)',
         { search },
       );
     }
-
-    const total = await qb.getCount();
 
     qb.leftJoin(Chat, 'chat', 'chat.conversation_id = lead.session_id AND chat.organization_id = lead.organization_id')
       .select([
