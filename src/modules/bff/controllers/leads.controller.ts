@@ -41,6 +41,7 @@ export class LeadsController {
         stage: item.stage,
         lastMessageAt: item.lastMessageAt,
         servico: item.servico,
+        pushName: item.pushName,
         colaboradores: item.colaboradores,
         tipoCliente: item.tipoCliente,
         cargo: item.cargo,

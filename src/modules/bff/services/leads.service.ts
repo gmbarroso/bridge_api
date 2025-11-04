@@ -25,6 +25,7 @@ export class LeadsService {
         ? row.last_message_at?.toISOString?.() ?? new Date(row.last_message_at).toISOString()
         : null,
       servico: row.servico ?? null,
+      pushName: row.pushname ?? null,
       colaboradores: row.colaboradores !== null && row.colaboradores !== undefined ? Number(row.colaboradores) : null,
       tipoCliente: row.tipo_cliente ?? null,
       cargo: row.cargo ?? null,
@@ -122,6 +123,7 @@ export class LeadsService {
         'lead.created_at AS created_at',
         'lead.last_message_at AS last_message_at',
         'lead.servico AS servico',
+        'lead.pushname AS pushname',
         'lead.colaboradores AS colaboradores',
         'lead.tipo_cliente AS tipo_cliente',
         'lead.cargo AS cargo',
@@ -220,6 +222,7 @@ export class LeadsService {
         'lead.created_at AS created_at',
         'lead.last_message_at AS last_message_at',
         'lead.servico AS servico',
+        'lead.pushname AS pushname',
         'lead.colaboradores AS colaboradores',
         'lead.tipo_cliente AS tipo_cliente',
         'lead.cargo AS cargo',

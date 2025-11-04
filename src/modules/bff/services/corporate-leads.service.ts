@@ -18,6 +18,7 @@ export class CorporateLeadsService {
       phone: row.phone ?? null,
       source: row.source ?? 'whatsapp',
       stage: row.stage ?? 'new',
+      pushName: row.pushname ?? null,
       createdAt: row.created_at?.toISOString?.() ?? new Date(row.created_at).toISOString(),
       lastMessageAt: row.last_message_at
         ? row.last_message_at?.toISOString?.() ?? new Date(row.last_message_at).toISOString()
@@ -107,6 +108,7 @@ export class CorporateLeadsService {
         'lead.phone AS phone',
         'lead.source AS source',
         'lead.stage AS stage',
+        'lead.pushname AS pushname',
         'lead.created_at AS created_at',
         'lead.last_message_at AS last_message_at',
         'lead.colaboradores AS colaboradores',
