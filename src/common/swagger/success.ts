@@ -75,6 +75,9 @@ export class BffLeadListItem {
   @ApiProperty({ example: 'corte-feminino', nullable: true })
   servico!: string | null;
 
+  @ApiProperty({ example: 'Contato WhatsApp', nullable: true })
+  pushName!: string | null;
+
   @ApiProperty({ example: 'c1b0b0d1-0000-4000-8000-000000000000', nullable: true })
   conversationPublicId!: string | null;
 
@@ -147,6 +150,9 @@ export class BffCorporateLeadListItem {
 
   @ApiProperty({ example: 'new' })
   stage!: string;
+
+  @ApiProperty({ example: 'Contato WhatsApp', nullable: true })
+  pushName!: string | null;
 
   @ApiProperty({ example: '2025-10-10T12:34:56.000Z' })
   createdAt!: string;

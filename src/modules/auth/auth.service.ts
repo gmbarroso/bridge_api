@@ -57,13 +57,15 @@ export class AuthService {
     return this.parseTtlToSeconds(process.env.JWT_ACCESS_TTL);
   }
 
-  private getRefreshTtlMs() {
-    const days = Number(process.env.JWT_REFRESH_TTL_DAYS || 30);
+  private getRefreshTtlMs(rememberMe?: boolean) {
+    const defaultTtlDays = Number(process.env.JWT_REFRESH_TTL_DAYS || 30);
+    const rememberMeTtlDays = Number(process.env.JWT_REFRESH_REMEMBER_ME_TTL_DAYS || 90);
+    const days = rememberMe ? rememberMeTtlDays : defaultTtlDays;
     return days * 24 * 60 * 60 * 1000;
   }
 
-  private getRefreshExpiresAt() {
-    return new Date(Date.now() + this.getRefreshTtlMs());
+  private getRefreshExpiresAt(rememberMe?: boolean) {
+    return new Date(Date.now() + this.getRefreshTtlMs(rememberMe));
   }
 
   private buildDeviceMetadata(meta?: { userAgent?: string | null; ip?: string | null }) {
@@ -80,14 +82,15 @@ export class AuthService {
   private async persistSession(
     user: User,
     tokenRow: RefreshToken,
+    rememberMe: boolean,
     meta?: { userAgent?: string | null; ip?: string | null },
   ) {
     const session = this.userSessionRepo.create({
       user_id: user.id,
       organization_id: user.organization_id,
       refresh_token_hash: tokenRow.token_hash,
-      expires_at: this.getRefreshExpiresAt(),
-      remember_me: false,
+      expires_at: this.getRefreshExpiresAt(rememberMe),
+      remember_me: rememberMe,
       device_metadata: this.buildDeviceMetadata(meta),
     });
     await this.userSessionRepo.save(session);
@@ -112,8 +115,8 @@ export class AuthService {
     return sign(payload as object, this.getAccessSecret(), options);
   }
 
-  private async issueRefreshToken(user: User, meta?: { userAgent?: string | null; ip?: string | null }) {
-    const expiresInSec = Math.floor(this.getRefreshTtlMs() / 1000);
+  private async issueRefreshToken(user: User, rememberMe: boolean, meta?: { userAgent?: string | null; ip?: string | null }) {
+    const expiresInSec = Math.floor(this.getRefreshTtlMs(rememberMe) / 1000);
     const options: SignOptions = { expiresIn: expiresInSec };
     const raw = sign({ sub: user.id } as object, this.getRefreshSecret(), options);
     const token_hash = await argon2.hash(raw);
@@ -125,11 +128,11 @@ export class AuthService {
       replaced_by_token_id: null,
       revoked_at: null,
     });
-    await this.persistSession(user, saved, meta);
+    await this.persistSession(user, saved, rememberMe, meta);
     return { refreshToken: raw, tokenRow: saved };
   }
 
-  async login(email: string, password: string, meta?: { userAgent?: string | null; ip?: string | null }) {
+  async login(email: string, password: string, rememberMe = false, meta?: { userAgent?: string | null; ip?: string | null }) {
     const user = await this.userRepo.findOne({ where: { email } });
     if (!user) throw new UnauthorizedException('Credenciais inválidas');
     if (!user.password_hash) throw new UnauthorizedException('Credenciais inválidas');
@@ -150,7 +153,7 @@ export class AuthService {
     }
 
     const accessToken = this.signAccessToken(user);
-    const { refreshToken } = await this.issueRefreshToken(user, meta);
+    const { refreshToken } = await this.issueRefreshToken(user, rememberMe, meta);
 
     return {
       accessToken,
@@ -166,8 +169,8 @@ export class AuthService {
     };
   }
 
-  private isRefreshExpired(createdAt: Date) {
-    return createdAt.getTime() + this.getRefreshTtlMs() < Date.now();
+  private isRefreshExpired(createdAt: Date, rememberMe?: boolean) {
+    return createdAt.getTime() + this.getRefreshTtlMs(rememberMe) < Date.now();
   }
 
   async refresh(refreshToken: string, meta?: { userAgent?: string | null; ip?: string | null }) {
@@ -189,8 +192,12 @@ export class AuthService {
       }
     }
     if (!tokenRow) throw new UnauthorizedException('Refresh token inválido');
+
+    const userSession = await this.userSessionRepo.findOne({ where: { refresh_token_hash: tokenRow.token_hash } });
+    const rememberMe = userSession?.remember_me || false;
+
     if (tokenRow.revoked_at) throw new UnauthorizedException('Refresh token revogado');
-    if (this.isRefreshExpired(tokenRow.created_at)) {
+    if (this.isRefreshExpired(tokenRow.created_at, rememberMe)) {
       throw new UnauthorizedException('Refresh token expirado');
     }
 
@@ -199,7 +206,7 @@ export class AuthService {
 
     // Rotate: revoke old and issue new
     tokenRow.revoked_at = new Date();
-    const newPair = await this.issueRefreshToken(user, meta);
+    const newPair = await this.issueRefreshToken(user, rememberMe, meta);
     tokenRow.replaced_by_token_id = newPair.tokenRow.id;
     await this.refreshRepo.save(tokenRow);
     await this.expireSessionsByHash(tokenRow.token_hash);

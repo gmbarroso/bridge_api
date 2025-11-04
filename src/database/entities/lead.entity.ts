@@ -108,7 +108,7 @@ export class Lead {
   @UpdateDateColumn({ type: 'timestamptz' })
   updated_at: Date;
 
-  @Column({ type: 'text', nullable: true, name: 'pushName' })
+  @Column({ type: 'text', nullable: true, name: 'pushname' })
   pushName: string | null;
 
   @Column({ type: 'text', nullable: true })
