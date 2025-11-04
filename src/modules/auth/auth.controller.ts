@@ -24,7 +24,7 @@ export class AuthController {
   @RateLimit({ windowMs: 5 * 60_000, max: 10, includeBodyFields: ['email'] })
   @UseGuards(RateLimitGuard)
   async login(@Body() dto: LoginDto, @Headers('user-agent') userAgent: string | undefined, @Ip() ip: string | undefined) {
-    return this.auth.login(dto.email, dto.password, { userAgent: userAgent || null, ip: ip || null });
+    return this.auth.login(dto.email, dto.password, dto.rememberMe, { userAgent: userAgent || null, ip: ip || null });
   }
 
   @Post('refresh')

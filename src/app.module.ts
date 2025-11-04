@@ -8,6 +8,8 @@ import * as entities from './database/entities';
 import { AuthModule } from './modules/auth/auth.module';
 import { IngestModule } from './modules/ingest/ingest.module';
 import { BffModule } from './modules/bff/bff.module';
+import { UsersModule } from './modules/users/users.module';
+import { PreferencesModule } from './modules/preferences/preferences.module';
 import { RequestLoggerInterceptor } from './common/interceptors/request-logger.interceptor';
 
 @Module({
@@ -36,6 +38,8 @@ import { RequestLoggerInterceptor } from './common/interceptors/request-logger.i
     AuthModule,
     IngestModule,
     BffModule,
+    UsersModule,
+    PreferencesModule,
   ],
   controllers: [AppController],
   providers: [AppService],
