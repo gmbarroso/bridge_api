@@ -138,10 +138,18 @@ export class CorporateLeadsService {
     const sliced = hasMore ? rows.slice(0, limit) : rows;
     const items: BffCorporateLeadListItem[] = sliced.map((row) => this.mapLeadToResponse(row));
 
+    const currentPage = useCursor ? query.page ?? 1 : query.page ?? 1;
+    const hasNext = hasMore || Boolean(query.cursor);
+    const hasPrevious = currentPage > 1 || Boolean(query.cursor);
+
     return {
       items,
       nextCursor: hasMore ? this.encodeCursor(rows[limit]) : null,
       total,
+      page: currentPage,
+      limit,
+      hasNext,
+      hasPrevious,
     };
   }
 }

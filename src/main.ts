@@ -33,7 +33,7 @@ async function createApp() {
   app.enableCors({
     origin: allowedOrigins === '*' ? true : allowedOrigins.split(',').map(origin => origin.trim()),
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: [
       'Content-Type',
       'Authorization',

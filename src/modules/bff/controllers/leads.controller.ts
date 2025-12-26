@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post, Query, Req, Res, UseGuards } from '@nestjs
 import { JwtAuthGuard } from '../../auth/guards/jwt.guard';
 import { OrganizationId } from '../../../common/decorators/organization.decorator';
 import { LeadsService } from '../services/leads.service';
-import { ListLeadsQueryDto, UpdateLeadDto } from '../dto/leads.dto';
+import { ListLeadsQueryDto, UpdateLeadDto, CreateLeadDto } from '../dto/leads.dto';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiQuery, ApiResponse, ApiTags, ApiHeader, getSchemaPath, ApiBody } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { BffLeadListItem, BffLeadListResponse } from '../../../common/swagger/success';
@@ -114,5 +114,17 @@ export class LeadsController {
     @Body() body: UpdateLeadDto,
   ) {
     return this.leadsService.update(orgId, body);
+  }
+
+  @Post('create')
+  @ApiOperation({ summary: 'Cria um novo lead manualmente' })
+  @ApiBody({ schema: { $ref: getSchemaPath(CreateLeadDto) } })
+  @ApiOkResponse({ schema: { $ref: getSchemaPath(BffLeadListItem) } })
+  @ApiResponse({ status: 400, description: 'Payload inválido', schema: { $ref: getSchemaPath(ErrorResponse) } })
+  async create(
+    @OrganizationId() orgId: number,
+    @Body() body: CreateLeadDto,
+  ) {
+    return this.leadsService.create(orgId, body);
   }
 }

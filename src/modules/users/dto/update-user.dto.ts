@@ -7,6 +7,16 @@ export class UpdateUserDto {
   @IsString()
   name?: string;
 
+  @ApiPropertyOptional({ description: 'URL ou base64 do avatar' })
+  @IsOptional()
+  @IsString()
+  avatarUrl?: string;
+
+  @ApiPropertyOptional({ description: 'Telefone do usuário' })
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
   @ApiPropertyOptional({ description: 'Senha atual (obrigatória para trocar a senha)' })
   @IsOptional()
   @IsString()

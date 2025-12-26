@@ -132,6 +132,20 @@ export class AuthService {
     return { refreshToken: raw, tokenRow: saved };
   }
 
+  /**
+   * Emite um novo par de tokens para um usuário já autenticado.
+   * Útil em fluxos como troca de senha para manter a sessão atual.
+   */
+  async issueTokensForUser(
+    user: User,
+    rememberMe = false,
+    meta?: { userAgent?: string | null; ip?: string | null },
+  ): Promise<{ accessToken: string; refreshToken: string }> {
+    const accessToken = this.signAccessToken(user);
+    const { refreshToken } = await this.issueRefreshToken(user, rememberMe, meta);
+    return { accessToken, refreshToken };
+  }
+
   async login(email: string, password: string, rememberMe = false, meta?: { userAgent?: string | null; ip?: string | null }) {
     const user = await this.userRepo.findOne({ where: { email } });
     if (!user) throw new UnauthorizedException('Credenciais inválidas');

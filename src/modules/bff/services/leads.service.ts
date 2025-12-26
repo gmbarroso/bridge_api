@@ -2,12 +2,17 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { DataSource } from 'typeorm';
 import { Lead } from '../../../database/entities/lead.entity';
 import { Chat } from '../../../database/entities/chat.entity';
-import { ListLeadsQueryDto, UpdateLeadDto } from '../dto/leads.dto';
+import { ListLeadsQueryDto, UpdateLeadDto, CreateLeadDto } from '../dto/leads.dto';
 import { BffLeadListItem, BffLeadListResponse } from '../../../common/swagger/success';
+import { v4 as uuidv4 } from 'uuid';
+import { NotificationsService } from '../../notifications/notifications.service';
 
 @Injectable()
 export class LeadsService {
-  constructor(private readonly dataSource: DataSource) {}
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly notifications: NotificationsService,
+  ) {}
 
   private mapLeadToResponse(row: any): BffLeadListItem {
     return {
@@ -85,6 +90,13 @@ export class LeadsService {
       );
     }
 
+    if (query.dateFrom) {
+      totalQb.andWhere('lead.created_at >= :dateFrom', { dateFrom: new Date(query.dateFrom) });
+    }
+    if (query.dateTo) {
+      totalQb.andWhere('lead.created_at <= :dateTo', { dateTo: new Date(query.dateTo) });
+    }
+
     const total = await totalQb.getCount();
 
     const qb = this.dataSource
@@ -106,6 +118,13 @@ export class LeadsService {
         '(lead.name ILIKE :search OR lead.phone ILIKE :search OR lead.email ILIKE :search OR lead.session_id ILIKE :search OR lead.company_name ILIKE :search)',
         { search },
       );
+    }
+
+    if (query.dateFrom) {
+      qb.andWhere('lead.created_at >= :dateFrom', { dateFrom: new Date(query.dateFrom) });
+    }
+    if (query.dateTo) {
+      qb.andWhere('lead.created_at <= :dateTo', { dateTo: new Date(query.dateTo) });
     }
 
     qb.leftJoin(Chat, 'chat', 'chat.conversation_id = lead.session_id AND chat.organization_id = lead.organization_id')
@@ -152,11 +171,18 @@ export class LeadsService {
     const items: BffLeadListItem[] = sliced.map((row) => this.mapLeadToResponse(row));
 
     const nextCursor = hasMore ? this.encodeCursor(rows[limit]) : null;
+    const currentPage = useCursor ? query.page ?? 1 : query.page ?? 1;
+    const hasNext = hasMore || Boolean(nextCursor);
+    const hasPrevious = currentPage > 1 || Boolean(query.cursor);
 
     return {
       items,
       nextCursor,
       total,
+      page: currentPage,
+      limit,
+      hasNext,
+      hasPrevious,
     };
   }
 
@@ -187,6 +213,8 @@ export class LeadsService {
       throw new NotFoundException('Lead não encontrado');
     }
 
+    const previousStage = lead.stage;
+
     if (dto.kind) lead.kind = dto.kind;
     if (dto.name !== undefined) lead.name = dto.name ?? null;
     if (dto.companyName !== undefined) lead.company_name = dto.companyName ?? null;
@@ -203,6 +231,10 @@ export class LeadsService {
     if (dto.cpfCnpj !== undefined) lead.cpf_cnpj = dto.cpfCnpj ?? null;
 
     await leadRepo.save(lead);
+
+    if (dto.stage && dto.stage !== previousStage) {
+      await this.notifications.notifyLeadStageChanged(lead, previousStage, dto.stage);
+    }
 
     const row = await this.dataSource
       .getRepository(Lead)
@@ -236,5 +268,50 @@ export class LeadsService {
       .getRawOne();
 
     return this.mapLeadToResponse(row);
+  }
+
+  async create(orgId: number, dto: CreateLeadDto): Promise<BffLeadListItem> {
+    const leadRepo = this.dataSource.getRepository(Lead);
+
+    if (!dto.name && !dto.companyName && !dto.phone) {
+      throw new BadRequestException('Informe pelo menos nome, empresa ou telefone');
+    }
+
+    const sessionId = dto.sessionId || `session-${uuidv4()}`;
+
+    const existing = await leadRepo.findOne({ where: { session_id: sessionId } });
+    if (existing) {
+      throw new BadRequestException('sessionId já existe, escolha outro');
+    }
+
+    const lead = leadRepo.create({
+      organization_id: orgId,
+      sub_organization_id: null,
+      session_id: sessionId,
+      kind: dto.kind || 'person',
+      stage: dto.stage || 'new',
+      source: 'manual',
+      name: dto.name ?? null,
+      company_name: dto.companyName ?? null,
+      phone: dto.phone ?? null,
+      email: dto.email ?? null,
+      document: dto.document ?? null,
+      servico: dto.servico ?? null,
+      colaboradores: dto.colaboradores ?? null,
+      tipo_cliente: dto.tipoCliente ?? null,
+      cargo: dto.cargo ?? null,
+      empresa: dto.empresa ?? null,
+      nome_agendado: dto.nomeAgendado ?? null,
+      cpf_cnpj: dto.cpfCnpj ?? null,
+    });
+
+    const saved: Lead = await leadRepo.save(lead);
+    await this.notifications.notifyLeadCreated(saved);
+    return this.mapLeadToResponse({
+      ...saved,
+      lead_id: saved.id,
+      lead_public_id: saved.public_id,
+      session_id: saved.session_id,
+    });
   }
 }
