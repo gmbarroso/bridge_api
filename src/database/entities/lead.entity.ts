@@ -30,7 +30,7 @@ export class Lead {
   organization_id: number;
 
   @Column({ type: 'bigint', nullable: true })
-  sub_organization_id: number;
+  sub_organization_id: number | null;
 
   @ManyToOne(() => Suborganization, { onDelete: 'SET NULL', nullable: true })
   @JoinColumn({ name: 'sub_organization_id' })
@@ -111,7 +111,7 @@ export class Lead {
   @Column({ type: 'text', nullable: true, name: 'pushname' })
   pushName: string | null;
 
-  @Column({ type: 'text', nullable: true })
+  @Column({ type: 'text', nullable: true, name: 'service' })
   servico: string | null;
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })

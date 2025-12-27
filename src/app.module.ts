@@ -10,6 +10,7 @@ import { IngestModule } from './modules/ingest/ingest.module';
 import { BffModule } from './modules/bff/bff.module';
 import { UsersModule } from './modules/users/users.module';
 import { PreferencesModule } from './modules/preferences/preferences.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { RequestLoggerInterceptor } from './common/interceptors/request-logger.interceptor';
 
 @Module({
@@ -40,6 +41,7 @@ import { RequestLoggerInterceptor } from './common/interceptors/request-logger.i
     BffModule,
     UsersModule,
     PreferencesModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

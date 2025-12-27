@@ -8,9 +8,10 @@ import { LeadsController } from './controllers/leads.controller';
 import { LeadsService } from './services/leads.service';
 import { CorporateLeadsController } from './controllers/corporate-leads.controller';
 import { CorporateLeadsService } from './services/corporate-leads.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, NotificationsModule],
   controllers: [LeadsController, CorporateLeadsController, ConversationsController, StatsController],
   providers: [LeadsService, CorporateLeadsService, ChatsService, StatsService],
 })

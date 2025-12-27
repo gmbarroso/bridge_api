@@ -109,6 +109,18 @@ export class BffLeadListResponse {
 
   @ApiProperty({ example: 25, description: 'Total de itens que correspondem à busca, sem paginação.' })
   total!: number;
+
+  @ApiProperty({ example: 1, description: 'Página atual (base 1).' })
+  page!: number;
+
+  @ApiProperty({ example: 50, description: 'Limite de itens por página.' })
+  limit!: number;
+
+  @ApiProperty({ example: true, description: 'Indica se existe próxima página.' })
+  hasNext!: boolean;
+
+  @ApiProperty({ example: false, description: 'Indica se existe página anterior.' })
+  hasPrevious!: boolean;
 }
 
 export class BffCorporateLeadListItem {
@@ -173,6 +185,18 @@ export class BffCorporateLeadListResponse {
 
   @ApiProperty({ example: 25, description: 'Total de itens que correspondem à busca, sem paginação.' })
   total!: number;
+
+  @ApiProperty({ example: 1, description: 'Página atual (base 1).' })
+  page!: number;
+
+  @ApiProperty({ example: 50, description: 'Limite de itens por página.' })
+  limit!: number;
+
+  @ApiProperty({ example: true, description: 'Indica se existe próxima página.' })
+  hasNext!: boolean;
+
+  @ApiProperty({ example: false, description: 'Indica se existe página anterior.' })
+  hasPrevious!: boolean;
 }
 
 export class BffTimelineMessageItem {
