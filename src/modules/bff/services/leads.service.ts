@@ -4,7 +4,7 @@ import { Lead } from '../../../database/entities/lead.entity';
 import { Chat } from '../../../database/entities/chat.entity';
 import { ListLeadsQueryDto, UpdateLeadDto, CreateLeadDto } from '../dto/leads.dto';
 import { BffLeadListItem, BffLeadListResponse } from '../../../common/swagger/success';
-import { v4 as uuidv4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { NotificationsService } from '../../notifications/notifications.service';
 
 @Injectable()
@@ -277,7 +277,7 @@ export class LeadsService {
       throw new BadRequestException('Informe pelo menos nome, empresa ou telefone');
     }
 
-    const sessionId = dto.sessionId || `session-${uuidv4()}`;
+    const sessionId = dto.sessionId || `session-${randomUUID()}`;
 
     const existing = await leadRepo.findOne({ where: { session_id: sessionId } });
     if (existing) {
