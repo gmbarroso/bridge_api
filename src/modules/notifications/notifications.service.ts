@@ -5,6 +5,8 @@ import { Notification } from '../../database/entities/notification.entity';
 import { ListNotificationsDto } from './dto/list-notifications.dto';
 import { Lead } from '../../database/entities/lead.entity';
 
+type AppointmentStatus = 'scheduled' | 'canceled' | 'done' | 'no_show';
+
 @Injectable()
 export class NotificationsService {
   constructor(
@@ -58,6 +60,52 @@ export class NotificationsService {
         phone: lead.phone,
         from: fromStage,
         to: toStage,
+      },
+    });
+  }
+
+  async notifyNewAppointment(params: {
+    lead: Lead
+    startTime: string
+    endTime: string
+    status: AppointmentStatus
+    service: string | null
+    notes?: string | null
+  }) {
+    return this.createNotification({
+      organizationId: params.lead.organization_id,
+      subOrganizationId: params.lead.sub_organization_id,
+      type: 'new_appointment',
+      lead: params.lead,
+      payload: {
+        startTime: params.startTime,
+        endTime: params.endTime,
+        status: params.status,
+        service: params.service,
+        notes: params.notes ?? null,
+      },
+    });
+  }
+
+  async notifyAppointmentStatusChanged(params: {
+    lead: Lead
+    fromStatus: AppointmentStatus
+    toStatus: AppointmentStatus
+    startTime: string
+    endTime: string
+    service: string | null
+  }) {
+    return this.createNotification({
+      organizationId: params.lead.organization_id,
+      subOrganizationId: params.lead.sub_organization_id,
+      type: 'appointment_status_change',
+      lead: params.lead,
+      payload: {
+        from: params.fromStatus,
+        to: params.toStatus,
+        startTime: params.startTime,
+        endTime: params.endTime,
+        service: params.service,
       },
     });
   }

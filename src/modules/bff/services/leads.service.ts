@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { DataSource } from 'typeorm';
 import { Lead } from '../../../database/entities/lead.entity';
 import { Chat } from '../../../database/entities/chat.entity';
-import { ListLeadsQueryDto, UpdateLeadDto, CreateLeadDto } from '../dto/leads.dto';
+import { ListLeadsQueryDto, UpdateLeadDto, CreateLeadDto, SearchLeadsQueryDto } from '../dto/leads.dto';
 import { BffLeadListItem, BffLeadListResponse } from '../../../common/swagger/success';
 import { randomUUID } from 'crypto';
 import { NotificationsService } from '../../notifications/notifications.service';
@@ -16,6 +16,7 @@ export class LeadsService {
 
   private mapLeadToResponse(row: any): BffLeadListItem {
     return {
+      leadId: Number(row.lead_id ?? row.id),
       kind: (row.kind ?? 'person') as 'person' | 'corporate',
       sessionId: row.session_id,
       leadPublicId: row.lead_public_id,
@@ -313,5 +314,48 @@ export class LeadsService {
       lead_public_id: saved.public_id,
       session_id: saved.session_id,
     });
+  }
+
+  async search(orgId: number, query: SearchLeadsQueryDto) {
+    const limit = Math.min(Math.max(query.limit ?? 20, 1), 50);
+    const qb = this.dataSource
+      .getRepository(Lead)
+      .createQueryBuilder('lead')
+      .where('lead.organization_id = :orgId', { orgId })
+      .orderBy('lead.last_message_at', 'DESC')
+      .addOrderBy('lead.created_at', 'DESC')
+      .limit(limit);
+
+    if (query.query) {
+      const search = `%${query.query.replace(/%/g, '\\%').replace(/_/g, '\\_')}%`;
+      qb.andWhere(
+        '(lead.name ILIKE :search OR lead.phone ILIKE :search OR lead.email ILIKE :search OR lead.session_id ILIKE :search OR lead.company_name ILIKE :search)',
+        { search },
+      );
+    }
+
+    const rows = await qb
+      .select([
+        'lead.id AS id',
+        'lead.public_id AS lead_public_id',
+        'lead.session_id AS session_id',
+        'lead.name AS name',
+        'lead.company_name AS company_name',
+        'lead.phone AS phone',
+        'lead.servico AS servico',
+      ])
+      .getRawMany();
+
+    return {
+      items: rows.map((row) => ({
+        id: Number(row.id),
+        leadPublicId: row.lead_public_id ?? null,
+        name: row.name ?? null,
+        companyName: row.company_name ?? null,
+        phone: row.phone ?? null,
+        service: row.servico ?? null,
+        sessionId: row.session_id,
+      })),
+    };
   }
 }

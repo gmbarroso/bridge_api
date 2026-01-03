@@ -12,6 +12,8 @@ import {
   BffCorporateLeadListResponse,
   BffTimelineMessageItem,
   BffTimelineResponse,
+  BffAppointmentItem,
+  BffAppointmentListResponse,
 } from './common/swagger/success';
 import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
@@ -19,6 +21,7 @@ import { INestApplication } from '@nestjs/common';
 import { RequestContextInterceptor } from './common/interceptors/request-context.interceptor';
 import { RequestLoggerInterceptor } from './common/interceptors/request-logger.interceptor';
 import { UpdateLeadDto } from './modules/bff/dto/leads.dto';
+import { CreateAppointmentDto, UpdateAppointmentDto } from './modules/bff/dto/appointments.dto';
 
 let cachedApp: INestApplication;
 
@@ -95,6 +98,10 @@ async function createApp() {
       BffTimelineMessageItem,
       BffTimelineResponse,
       UpdateLeadDto,
+      CreateAppointmentDto,
+      UpdateAppointmentDto,
+      BffAppointmentItem,
+      BffAppointmentListResponse,
     ],
   });
   SwaggerModule.setup('api', app, document, {
