@@ -11,10 +11,12 @@ import { CorporateLeadsService } from './services/corporate-leads.service';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { AppointmentsController } from './controllers/appointments.controller';
 import { AppointmentsService } from './services/appointments.service';
+import { IntegrationsController } from './controllers/integrations.controller';
+import { IntegrationsService } from './services/integrations.service';
 
 @Module({
   imports: [AuthModule, NotificationsModule],
-  controllers: [LeadsController, CorporateLeadsController, ConversationsController, StatsController, AppointmentsController],
-  providers: [LeadsService, CorporateLeadsService, ChatsService, StatsService, AppointmentsService],
+  controllers: [LeadsController, CorporateLeadsController, ConversationsController, StatsController, AppointmentsController, IntegrationsController],
+  providers: [LeadsService, CorporateLeadsService, ChatsService, StatsService, AppointmentsService, IntegrationsService],
 })
 export class BffModule {}
