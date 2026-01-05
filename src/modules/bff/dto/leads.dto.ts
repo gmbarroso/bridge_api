@@ -237,3 +237,24 @@ export class CreateLeadDto {
   @IsString()
   cpfCnpj?: string;
 }
+
+export class SearchLeadsQueryDto {
+  @ApiPropertyOptional({
+    description: 'Busca por nome, telefone ou email',
+    example: 'ana',
+  })
+  @IsOptional()
+  @IsString()
+  query?: string;
+
+  @ApiPropertyOptional({
+    description: 'Limite de itens (1-50, padrão 20)',
+    example: 20,
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(50)
+  limit?: number;
+}

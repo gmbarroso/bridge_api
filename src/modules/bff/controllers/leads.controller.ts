@@ -2,7 +2,7 @@ import { Body, Controller, Get, Post, Query, Req, Res, UseGuards } from '@nestjs
 import { JwtAuthGuard } from '../../auth/guards/jwt.guard';
 import { OrganizationId } from '../../../common/decorators/organization.decorator';
 import { LeadsService } from '../services/leads.service';
-import { ListLeadsQueryDto, UpdateLeadDto, CreateLeadDto } from '../dto/leads.dto';
+import { ListLeadsQueryDto, UpdateLeadDto, CreateLeadDto, SearchLeadsQueryDto } from '../dto/leads.dto';
 import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiQuery, ApiResponse, ApiTags, ApiHeader, getSchemaPath, ApiBody } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { BffLeadListItem, BffLeadListResponse } from '../../../common/swagger/success';
@@ -60,6 +60,40 @@ export class LeadsController {
     res.setHeader('ETag', etag);
     res.setHeader('Cache-Control', 'private, must-revalidate');
     res.status(200).json(result);
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: 'Busca rápida de leads (nome, telefone, email) para autocomplete' })
+  @ApiQuery({ name: 'query', required: false, description: 'Trecho de busca' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Limite de itens (1-50, padrão 20)' })
+  @ApiOkResponse({
+    description: 'Lista enxuta para autocomplete',
+    schema: {
+      type: 'object',
+      properties: {
+        items: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'number' },
+              leadPublicId: { type: 'string', nullable: true },
+              name: { type: 'string', nullable: true },
+              companyName: { type: 'string', nullable: true },
+              phone: { type: 'string', nullable: true },
+              service: { type: 'string', nullable: true },
+              sessionId: { type: 'string' },
+            },
+          },
+        },
+      },
+    },
+  })
+  async search(
+    @OrganizationId() orgId: number,
+    @Query() query: SearchLeadsQueryDto,
+  ) {
+    return this.leadsService.search(orgId, query);
   }
 
   @Get()

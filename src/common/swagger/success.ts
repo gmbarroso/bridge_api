@@ -39,6 +39,9 @@ export class LoginResponse extends TokenPairResponse {
 }
 
 export class BffLeadListItem {
+  @ApiProperty({ example: 123 })
+  leadId!: number;
+
   @ApiProperty({ example: 'person', enum: ['person', 'corporate'] })
   kind!: 'person' | 'corporate';
 
@@ -190,6 +193,87 @@ export class BffCorporateLeadListResponse {
   page!: number;
 
   @ApiProperty({ example: 50, description: 'Limite de itens por página.' })
+  limit!: number;
+
+  @ApiProperty({ example: true, description: 'Indica se existe próxima página.' })
+  hasNext!: boolean;
+
+  @ApiProperty({ example: false, description: 'Indica se existe página anterior.' })
+  hasPrevious!: boolean;
+}
+
+export class BffAppointmentLeadSummary {
+  @ApiProperty({ example: 123 })
+  id!: number;
+
+  @ApiProperty({ example: 'Maria', nullable: true })
+  name!: string | null;
+
+  @ApiProperty({ example: '+55 11 99999-0000', nullable: true })
+  phone!: string | null;
+
+  @ApiProperty({ example: 'corte-feminino', nullable: true })
+  service!: string | null;
+
+  @ApiProperty({ example: 'Bridge Tecnologia', nullable: true })
+  companyName!: string | null;
+}
+
+export class BffAppointmentItem {
+  @ApiProperty({ example: 42 })
+  id!: number;
+
+  @ApiProperty({ example: 10 })
+  organizationId!: number;
+
+  @ApiProperty({ example: null, nullable: true })
+  subOrganizationId!: number | null;
+
+  @ApiProperty({ example: 123 })
+  leadId!: number;
+
+  @ApiProperty({ example: 'corte-feminino', nullable: true })
+  service!: string | null;
+
+  @ApiProperty({ example: '2025-02-01T14:00:00.000Z' })
+  startTime!: string;
+
+  @ApiProperty({ example: '2025-02-01T15:00:00.000Z' })
+  endTime!: string;
+
+  @ApiProperty({ example: 'scheduled', enum: ['scheduled', 'canceled', 'done', 'no_show'] })
+  status!: 'scheduled' | 'canceled' | 'done' | 'no_show';
+
+  @ApiProperty({ example: 'Cliente pediu para confirmar endereço', nullable: true })
+  notes!: string | null;
+
+  @ApiProperty({ example: 'corte-feminino - Maria - 2025-02-01T14:00:00.000Z' })
+  title!: string;
+
+  @ApiProperty({ example: 'Maria | corte-feminino | 2025-02-01T14:00:00.000Z -> 2025-02-01T15:00:00.000Z | status: scheduled' })
+  content!: string;
+
+  @ApiProperty({ example: '2025-01-10T12:00:00.000Z' })
+  createdAt!: string;
+
+  @ApiProperty({ example: '2025-01-10T12:00:00.000Z' })
+  updatedAt!: string;
+
+  @ApiProperty({ type: BffAppointmentLeadSummary, nullable: true })
+  lead?: BffAppointmentLeadSummary;
+}
+
+export class BffAppointmentListResponse {
+  @ApiProperty({ type: [BffAppointmentItem] })
+  items!: BffAppointmentItem[];
+
+  @ApiProperty({ example: 25, description: 'Total de itens que correspondem à busca, sem paginação.' })
+  total!: number;
+
+  @ApiProperty({ example: 1, description: 'Página atual (base 1).' })
+  page!: number;
+
+  @ApiProperty({ example: 20, description: 'Limite de itens por página.' })
   limit!: number;
 
   @ApiProperty({ example: true, description: 'Indica se existe próxima página.' })
